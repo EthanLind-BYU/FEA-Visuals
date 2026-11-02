@@ -1,0 +1,877 @@
+---
+title: "Linear elastostatics: strong form, weak form, and why they are the same problem"
+subtitle: "Hughes, Section 2.7: from the equilibrium equations to the principle of virtual work, and the first appearance of the matrix D"
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    respect-user-color-scheme: true
+    toc: true
+    toc-depth: 2
+    toc-location: left
+    embed-resources: true
+    html-math-method: mathjax
+    fontsize: 1.05em
+    callout-appearance: simple
+execute:
+  echo: false
+---
+
+::: {.callout-note appearance="minimal"}
+**How to use this page.** Each part opens with its goal and a "What's the point?" box. Every equation is followed by a short *where* list that defines each symbol right where it is used. The gray boxes are live: drag sliders, click buttons, tick boxes. The interactive pieces work offline; the equations need an internet connection to typeset. Exercises 1 to 6 in the book are left for you; the live boxes are there so you can **check** your own answers, not to hand you the solutions.
+:::
+
+```{=html}
+<style>
+.fe-widget{border:1px solid rgba(128,128,128,.35);border-radius:8px;padding:12px 14px;margin:1.2rem 0}
+.fe-ctrl{display:grid;grid-template-columns:minmax(110px,max-content) minmax(0,1fr) 3.5em;gap:6px 12px;align-items:center;margin-bottom:8px}
+.fe-ctrl output{text-align:right;font-variant-numeric:tabular-nums}
+.fe-out{margin:.5rem 0 0;font-variant-numeric:tabular-nums}
+.fe-table{border-collapse:collapse;font-variant-numeric:tabular-nums;margin-top:.5rem}
+.fe-table td,.fe-table th{padding:2px 10px;text-align:right}
+.fe-table td.hl,.fe-table th.hl{background:rgba(212,87,42,.28);border-radius:4px}
+.iso-row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}
+.iso-row>div{flex:1 1 190px;min-width:0}
+.iso-row>.iso-wide{flex:2 1 320px}
+.iso-btns{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;align-items:center}
+.iso-btns .lab{font-size:.85em;opacity:.75;margin-right:2px}
+.iso-btns button{font:inherit;font-size:.85em;padding:3px 10px;border-radius:14px;border:1px solid rgba(128,128,128,.5);background:transparent;color:inherit;cursor:pointer}
+.iso-btns button:hover{border-color:#d4572a}
+.iso-btns button.on{background:#d4572a;border-color:#d4572a;color:#fff}
+.iso-mat{display:inline-table;border-left:2px solid currentColor;border-right:2px solid currentColor;border-radius:4px;vertical-align:middle;margin:0 4px}
+.iso-mat td{padding:1px 8px;text-align:right;font-variant-numeric:tabular-nums}
+.iso-status{margin-top:.6rem;padding:8px 12px;border-radius:6px;border-left:4px solid}
+.iso-ok{border-color:#1d9e75;background:rgba(29,158,117,.10)}
+.iso-warn{border-color:#e0a100;background:rgba(224,161,0,.12)}
+.iso-bad{border-color:#d62828;background:rgba(214,40,40,.10)}
+.c-grid td,.c-grid th{padding:2px 12px;text-align:center}
+.c-grid td:first-child,.c-grid th:first-child{text-align:left}
+main table.table{display:block;max-width:100%;overflow-x:auto}
+</style>
+<script>
+window.FE=(function(){
+  function val(id){return +document.getElementById(id).value;}
+  function f(v,d){d=(d==null)?2:d;const r=+v.toFixed(d);return (Math.abs(r)<0.5*Math.pow(10,-d)?0:r).toFixed(d);}
+  function bind(ids,fn){
+    ids.forEach(function(id){
+      const e=document.getElementById(id),o=document.getElementById(id+'-v');
+      const show=function(){if(o){const st=String(e.step||'1');const d=st.indexOf('.')>=0?st.split('.')[1].length:0;o.textContent=(+e.value).toFixed(d);}};
+      e.addEventListener('input',function(){show();fn();});show();
+    });
+    fn();
+  }
+  function view(W,H,box,pad){pad=pad||10;
+    const sc=Math.min((W-2*pad)/(box[1]-box[0]),(H-2*pad)/(box[3]-box[2]));
+    const ox=pad+((W-2*pad)-sc*(box[1]-box[0]))/2, oy=pad+((H-2*pad)-sc*(box[3]-box[2]))/2;
+    return {sx:function(x){return ox+(x-box[0])*sc;}, sy:function(y){return H-oy-(y-box[2])*sc;}, sc:sc};}
+  function mat(A,cols){cols=cols||[];
+    return '<table class="iso-mat">'+A.map(function(r){return '<tr>'+r.map(function(x,k){return '<td'+(cols[k]?' style="color:'+cols[k]+'"':'')+'>'+f(x,3)+'</td>';}).join('')+'</tr>';}).join('')+'</table>';}
+  return {val:val,f:f,bind:bind,view:view,mat:mat};
+})();
+</script>
+```
+
+# The big picture: what is the goal of this section?
+
+In Chapter 1 and in the heat-conduction sections just before this one, you went from a differential equation (the **strong form**) to an integral equation (the **weak form**) for a **scalar** unknown, temperature $u$. Section 2.7 repeats the same recipe for the problem that matters most in solid mechanics: **a body that is supported and loaded, deforms by small amounts, and is made of a linear elastic material.**
+
+Only two things are new:
+
+1. The unknown is a **vector**: the displacement $u_i$, one component per direction.
+2. The "flux" is a **second-rank tensor**: the stress $\sigma_{ij}$, which is a $2\times2$ array in 2D and $3\times3$ in 3D.
+
+Everything else, multiply by a test function, integrate, integrate by parts, let the boundary conditions swallow the boundary terms, is the same.
+
+The section has three goals:
+
+1. **State the strong form (S)** of the elasticity problem: equilibrium inside the body, prescribed displacements on part of the boundary, prescribed tractions (forces per area) on the rest.
+2. **Derive the weak form (W)** and prove it is **equivalent** to (S). Solving (W) is what the finite element method does, so this proof is what says the FE method solves the right problem. The weak form is also the engineering **principle of virtual work**.
+3. **Rewrite (W) with matrices**, $\int_\Omega \boldsymbol\varepsilon(\boldsymbol w)^T\boldsymbol D\,\boldsymbol\varepsilon(\boldsymbol u)\,d\Omega$. This is the form that turns into the stiffness matrix $\boldsymbol K$ in the next sections.
+
+::: {.callout-tip}
+## What's the point of me showing you this?
+
+Every input you give a linear structural FE program is a piece of (S):
+
+- a **fixed support** is a piece of $\Gamma_{g_i}$ (a displacement you prescribe),
+- a **pressure or force** on a surface is a piece of $\Gamma_{h_i}$ (a traction you prescribe),
+- **gravity or acceleration** is the body force $f_i$,
+- **material properties** ($E$, $\nu$) are the coefficients $c_{ijkl}$.
+
+If you can translate a model's inputs into these symbols, you can answer the question an accountable analyst must always answer: **"what problem did I actually tell the computer to solve?"**
+:::
+
+```{mermaid}
+%%| fig-cap: "The logic of Section 2.7. Arrows are the steps the book proves."
+flowchart TD
+  S["Strong form (S): equilibrium, u = g on part of boundary, traction = h on the rest"] -->|"multiply by w, integrate, integrate by parts"| W["Weak form (W): a(w,u) = (w,f) + (w,h)"]
+  W -->|"choose special w to pull the pieces back out"| S
+  L["Lemmas 1 and 2: only the symmetric part of the gradient matters"] --> W
+  W --> M["Matrix form: integral of eps(w) transpose times D times eps(u)"]
+  M --> G["Section 2.8: Galerkin, symmetric positive definite K"]
+```
+
+## Notation key
+
+Your ebook renders several of Hughes's symbols as look-alikes. Here is how I read them in the screenshots:
+
+| What the screenshot shows | What Hughes means | In words |
+|:---:|:---:|---|
+| a slanted script "ℓ" with subscript $i$ | $f_i$ | **Body force** per unit volume (for gravity, $f_i=\rho g_i$) |
+| $\epsilon_{ij}$ | $\varepsilon_{ij}$ | **Strain tensor** |
+| small "ᵍᵢ" and "hᵢ" | $g_i$, $h_i$ | **Prescribed displacement** and **prescribed traction** |
+| r with subscripts, e.g. $\mathrm{r}_{g_i}$ | $\Gamma_{g_i}$, $\Gamma_{h_i}$ | Pieces of the boundary (capital gamma) |
+| ñ in "$\mathbf x\in\tilde n$" | $\bar\Omega$ | The body **plus** its boundary (the "closure" of $\Omega$) |
+| script $s_i$ and $v_i$ | $\mathcal S_i$, $\mathcal V_i$ | **Trial** space (allowed solutions) and **variation** or **test** space (allowed test functions) |
+| $\emptyset$ | $\emptyset$ | The empty set: "these two pieces do not overlap" |
+| "def." above an equals sign | | "is defined to be" |
+| $\phi$, $\psi$, $\alpha_i$, $\beta_i$ | | Helper functions and helper expressions used only inside the proof |
+
+And the **index notation** used on every line:
+
+- $n_{sd}$ is the number of space dimensions (2 or 3). Free indices $i,j,k,l$ run from $1$ to $n_{sd}$.
+- **Summation convention.** An index that appears **twice in one term is summed** over its range. Example in 2D: $\sigma_{ij}n_j=\sigma_{i1}n_1+\sigma_{i2}n_2$. Here $j$ is repeated (summed), $i$ appears once (free), so this is really **one equation for each $i$**.
+- **The comma means "derivative with respect to."** $u_{i,j}=\partial u_i/\partial x_j$, where $x_j$ is the $j$-th coordinate.
+- **Parentheses around indices mean "symmetric part."** $u_{(i,j)}=\tfrac12\,(u_{i,j}+u_{j,i})$. (Part 2 proves why this matters.)
+- **Traction.** If $\boldsymbol n=(n_1,\dots)$ is the outward unit normal on a surface, the force per unit area the surroundings exert on the body there is $t_i=\sigma_{ij}n_j$. In 2D that is $t_1=\sigma_{11}n_1+\sigma_{12}n_2$ and $t_2=\sigma_{21}n_1+\sigma_{22}n_2$: the matrix $\sigma$ times the vector $\boldsymbol n$.
+- **Divergence theorem, index form.** For any vector field $F_j$ on $\Omega$ with boundary $\Gamma$ and outward normal $n_j$:
+$$\int_\Omega F_{j,j}\,d\Omega=\int_\Gamma F_j\,n_j\,d\Gamma$$
+This is the multi-dimensional "integration by parts." It is the same tool used for heat conduction.
+
+# Part 1. The strong form (S)
+
+**Goal of this part.** Read each line of (S) and know what physical statement it makes.
+
+::: {.callout-tip}
+## What's the point?
+(S) is the *physics*. The weak form in Part 3 is a rearrangement of it. You need to know what each piece means so that later you can recognize it in a software menu.
+:::
+
+## Step 1.1: strain from displacement (2.7.1)
+
+$$
+\varepsilon_{ij}=u_{(i,j)}=\frac{u_{i,j}+u_{j,i}}{2}\tag{2.7.1}
+$$
+
+where $u_i(\boldsymbol x)$ is the displacement of the material point that started at position $\boldsymbol x$, and $\varepsilon_{ij}$ is the (infinitesimal) strain tensor. Written out in 2D:
+
+$$
+\varepsilon_{11}=u_{1,1},\qquad \varepsilon_{22}=u_{2,2},\qquad \varepsilon_{12}=\varepsilon_{21}=\tfrac12\,(u_{1,2}+u_{2,1})
+$$
+
+The four numbers $u_{i,j}$ form the **displacement gradient matrix**
+
+$$
+\boldsymbol G=\begin{bmatrix}u_{1,1}&u_{1,2}\\u_{2,1}&u_{2,2}\end{bmatrix}
+$$
+
+Row $i$ says how displacement component $i$ changes as you step in each direction. This is the **Jacobian matrix** (the matrix of all first partial derivatives) of the vector field $\boldsymbol u(\boldsymbol x)$, the same idea as the Jacobian of the element map in Section 3.3, applied now to the displacement. The strain is the **symmetric half** of $\boldsymbol G$. The other half, which Part 2 shows is a pure rotation, is thrown away.
+
+## Step 1.2: Hooke's law (2.7.2)
+
+$$
+\sigma_{ij}=c_{ijkl}\,\varepsilon_{kl}\tag{2.7.2}
+$$
+
+where $\sigma_{ij}$ is stress and $c_{ijkl}$ are the **elastic coefficients** (given functions of position $\boldsymbol x$; if they are constants the body is called **homogeneous**). The indices $k,l$ are repeated, so they are summed. In 2D, the single component $\sigma_{11}$ (take $i=j=1$) is
+
+$$
+\sigma_{11}=c_{1111}\varepsilon_{11}+c_{1112}\varepsilon_{12}+c_{1121}\varepsilon_{21}+c_{1122}\varepsilon_{22}
+$$
+
+Each $c_{ijkl}$ reads "how much stress component $ij$ you get per unit of strain component $kl$."
+
+::: {.callout-note}
+## Four indices, not four dimensions
+Space is still 2D or 3D. Each of the four indices independently runs over the coordinate directions, so $c_{ijkl}$ is a list of $n_{sd}^4$ numbers: $16$ in 2D and $81$ in 3D. Why four? Compare what each coefficient has to connect:
+
+- 1D bar: stress (1 number) from strain (1 number): $\sigma=E\varepsilon$. One coefficient.
+- Heat conduction: flux (a vector, 1 index) from temperature gradient (a vector, 1 index): $\kappa_{ij}$, **2** indices.
+- Elasticity: stress (a matrix, 2 indices) from strain (a matrix, 2 indices): $c_{ijkl}$, **4** indices.
+
+The coefficient needs one index for each index of what comes out and each index of what goes in. Part 6 shows how Hughes squeezes the 16 (or 81) numbers into a small matrix $\boldsymbol D$.
+:::
+
+## Step 1.3: the three properties of $c_{ijkl}$ (2.7.3 to 2.7.6)
+
+| Property | Equation | What it means |
+|---|---|---|
+| **Major symmetry** | $c_{ijkl}=c_{klij}$ | Swapping the "output pair" and "input pair" changes nothing. Reason: the material stores strain energy. It is the reason the stiffness matrix $\boldsymbol K$ will be symmetric (Section 2.8). |
+| **Minor symmetries** | $c_{ijkl}=c_{jikl}$ and $c_{ijkl}=c_{ijlk}$ | The first makes $\sigma_{ij}=\sigma_{ji}$ (**stress is symmetric**). The second says only the symmetric part of the strain-like input matters, so no information is lost by also making $c$ symmetric in $k,l$. |
+| **Positive-definiteness** | $c_{ijkl}\,\psi_{ij}\psi_{kl}\ge0$, and $=0$ only if $\psi_{ij}=0$, for every **symmetric** array $\psi_{ij}$ | Think of $\psi_{ij}$ as a strain. For a symmetric strain, $\tfrac12c_{ijkl}\varepsilon_{ij}\varepsilon_{kl}$ is the stored strain energy per unit volume (a standard result; the book does not spell it out on these pages). Positive-definite means **every non-zero deformation costs energy**: the material is stable and never "gives for free." |
+
+The book's note says positive-definiteness is stated for symmetric arrays $\psi_{ij}$ only. That is deliberate: a **rotation** is not symmetric, and rotating a body costs no energy. Part 2 shows exactly why.
+
+## Step 1.4: the boundary, split once per component (2.7.7 and Figure 2.7.1)
+
+In the scalar heat problem, the boundary $\Gamma$ was split into one piece where temperature was prescribed and one where flux was prescribed. Here the unknown has $n_{sd}$ components, and **each component gets its own split**:
+
+$$
+\Gamma=\overline{\Gamma_{g_i}\cup\Gamma_{h_i}},\qquad \emptyset=\Gamma_{g_i}\cap\Gamma_{h_i},\qquad i=1,\dots,n_{sd}\tag{2.7.7}
+$$
+
+where:
+
+- $\Gamma_{g_i}$ is the part of the boundary where **displacement component $i$** is prescribed ($u_i=g_i$).
+- $\Gamma_{h_i}$ is the part where **traction component $i$** is prescribed ($\sigma_{ij}n_j=h_i$).
+- The overbar means "including the endpoints where the pieces meet," and $\emptyset=\Gamma_{g_i}\cap\Gamma_{h_i}$ says the two pieces do not overlap. On any piece of the boundary and for each component, you prescribe the displacement **or** the traction, never both.
+
+Figure 2.7.1 draws two different splits, one for $i=1$ and one for $i=2$. A **roller support** is the everyday example: on a roller edge the normal displacement is prescribed ($u_n=0$, so that component is in $\Gamma_g$) but the tangential traction is prescribed too (frictionless, so $h=0$ for that component, in $\Gamma_h$). One physical edge belongs to $\Gamma_g$ for one component and to $\Gamma_h$ for the other.
+
+## Step 1.5: the statement of (S) (2.7.8 to 2.7.10)
+
+Given $f_i:\Omega\to\mathbb R$, $g_i:\Gamma_{g_i}\to\mathbb R$, $h_i:\Gamma_{h_i}\to\mathbb R$ (read "$f_i$ is a function that takes a point of the body and returns a real number," and likewise for the boundary pieces), find $u_i:\bar\Omega\to\mathbb R$ such that
+
+$$
+\begin{aligned}
+\sigma_{ij,j}+f_i&=0 &&\text{in }\Omega &&\text{(equilibrium equations)} &&(2.7.8)\\
+u_i&=g_i &&\text{on }\Gamma_{g_i} &&\text{(displacement BC)} &&(2.7.9)\\
+\sigma_{ij}n_j&=h_i &&\text{on }\Gamma_{h_i} &&\text{(traction BC)} &&(2.7.10)
+\end{aligned}
+$$
+
+where $\sigma_{ij}$ is computed from $u_i$ through (2.7.1) and (2.7.2).
+
+**Written out in 2D.** Equilibrium is two equations (the repeated $j$ is summed, the free index $i$ gives one equation per direction):
+
+$$
+\sigma_{11,1}+\sigma_{12,2}+f_1=0,\qquad \sigma_{21,1}+\sigma_{22,2}+f_2=0
+$$
+
+Each one is a force balance on a tiny piece of material: the net force from the stress differences across the piece plus the body force equals zero. The traction condition is also two equations:
+
+$$
+h_1=\sigma_{11}n_1+\sigma_{12}n_2,\qquad h_2=\sigma_{21}n_1+\sigma_{22}n_2
+$$
+
+*Example.* The right face of a plate has outward normal $\boldsymbol n=(1,0)$. Pulling it with a uniform tensile stress $p$ means $\boldsymbol h=(p,0)$, which says $\sigma_{11}=p$ and $\sigma_{21}=0$ on that face.
+
+The book calls (S) the **mixed boundary-value problem of linear elastostatics** ("mixed" because it has both displacement and traction conditions). Under suitable assumptions it has a unique solution.
+
+## Step 1.6: try it: which pieces of the boundary are in $\Gamma_g$ and which in $\Gamma_h$?
+
+Tick which displacement components are **fixed to zero** on each edge of a $4\times2$ plate. Everything you do not tick belongs to $\Gamma_{h_i}$ for that component, with traction $h_i=0$ (traction-free) unless you put a load there. The box also checks something the book will need in Section 2.8: whether the supports leave any **rigid-body motion** free. A rigid motion has zero strain, so zero strain energy, so the positive-definiteness of $c_{ijkl}$ cannot rule it out. Only your displacement conditions can.
+
+In 2D a small rigid motion is $u_1=a-\theta y$ and $u_2=b+\theta x$, where $a$ and $b$ are translations in $x$ and $y$ and $\theta$ is a small rotation angle. Each ticked edge and component forces that formula to equal zero along the edge. The box finds how many of $(a,b,\theta)$ survive.
+
+```{=html}
+<div class="fe-widget" id="c-box">
+<div class="iso-btns" id="c-presets"><span class="lab">Presets:</span></div>
+<div class="iso-row">
+<div class="iso-wide"><table class="fe-table c-grid" id="c-grid"></table></div>
+<div class="iso-wide"><div id="c-fig"></div></div>
+</div>
+<div id="c-sets" class="fe-out"></div>
+<div id="c-out"></div>
+</div>
+<script>
+(function(){
+  var Wd=4,Ht=2;
+  var edges=[
+    {k:'L',name:'Left (x = 0)',pts:[[0,0],[0,1],[0,2]]},
+    {k:'R',name:'Right (x = 4)',pts:[[4,0],[4,1],[4,2]]},
+    {k:'B',name:'Bottom (y = 0)',pts:[[0,0],[2,0],[4,0]]},
+    {k:'T',name:'Top (y = 2)',pts:[[0,2],[2,2],[4,2]]}];
+  var state={L:[0,0],R:[0,0],B:[0,0],T:[0,0]};
+  var presets=[
+    ['Cantilever: left edge fully fixed',{L:[1,1],R:[0,0],B:[0,0],T:[0,0]}],
+    ['Roller on left (u\u2081) + roller on bottom (u\u2082)',{L:[1,0],R:[0,0],B:[0,1],T:[0,0]}],
+    ['Left and right: u\u2081 only',{L:[1,0],R:[1,0],B:[0,0],T:[0,0]}],
+    ['Top and bottom: u\u2082 only',{L:[0,0],R:[0,0],B:[0,1],T:[0,1]}],
+    ['Left edge: u\u2082 only',{L:[0,1],R:[0,0],B:[0,0],T:[0,0]}],
+    ['Nothing fixed',{L:[0,0],R:[0,0],B:[0,0],T:[0,0]}]];
+  var bt=document.getElementById('c-presets');
+  presets.forEach(function(p,i){var b=document.createElement('button');b.type='button';b.textContent=p[0];
+    b.onclick=function(){edges.forEach(function(e){state[e.k]=p[1][e.k].slice();});sync();render();[].forEach.call(bt.querySelectorAll('button'),function(c){c.classList.remove('on');});b.classList.add('on');};
+    bt.appendChild(b);});
+  var g=document.getElementById('c-grid');
+  g.innerHTML='<tr><th>Edge</th><th>u\u2081 = 0 ?</th><th>u\u2082 = 0 ?</th></tr>'+edges.map(function(e){
+    return '<tr><td>'+e.name+'</td><td><input type="checkbox" id="c-'+e.k+'1" aria-label="'+e.name+' u1 fixed"></td><td><input type="checkbox" id="c-'+e.k+'2" aria-label="'+e.name+' u2 fixed"></td></tr>';}).join('');
+  function sync(){edges.forEach(function(e){document.getElementById('c-'+e.k+'1').checked=!!state[e.k][0];document.getElementById('c-'+e.k+'2').checked=!!state[e.k][1];});}
+  edges.forEach(function(e){[1,2].forEach(function(c){document.getElementById('c-'+e.k+c).addEventListener('change',function(ev){state[e.k][c-1]=ev.target.checked?1:0;[].forEach.call(bt.querySelectorAll('button'),function(b){b.classList.remove('on');});render();});});});
+  function rref(M){
+    var A=M.map(function(r){return r.slice();}),piv=[],r=0;
+    for(var c=0;c<3&&r<A.length;c++){
+      var p=r;for(var i=r;i<A.length;i++)if(Math.abs(A[i][c])>Math.abs(A[p][c]))p=i;
+      if(Math.abs(A[p][c])<1e-9)continue;
+      var t=A[r];A[r]=A[p];A[p]=t;
+      var d=A[r][c];A[r]=A[r].map(function(x){return x/d;});
+      for(var i2=0;i2<A.length;i2++)if(i2!==r){var fc=A[i2][c];if(Math.abs(fc)>0)A[i2]=A[i2].map(function(x,k){return x-fc*A[r][k];});}
+      piv.push(c);r++;}
+    return {A:A,piv:piv};}
+  function nullBasis(M){
+    if(M.length===0)return [[1,0,0],[0,1,0],[0,0,1]];
+    var R=rref(M),basis=[];
+    for(var c=0;c<3;c++){if(R.piv.indexOf(c)>=0)continue;var v=[0,0,0];v[c]=1;R.piv.forEach(function(pc,k){v[pc]=-R.A[k][c];});basis.push(v);}
+    return basis;}
+  function describe(v){
+    var a=v[0],b=v[1],th=v[2],f=FE.f;
+    if(Math.abs(th)<1e-9){if(Math.abs(b)<1e-9)return 'translation in x';if(Math.abs(a)<1e-9)return 'translation in y';return 'translation along ('+f(a,2)+', '+f(b,2)+')';}
+    return 'rotation about the point (x, y) = ('+f(-b/th,2)+', '+f(a/th,2)+')';}
+  function render(){
+    var rows=[];
+    edges.forEach(function(e){e.pts.forEach(function(p){
+      if(state[e.k][0])rows.push([1,0,-p[1]]);
+      if(state[e.k][1])rows.push([0,1,p[0]]);});});
+    var R=rows.length?rref(rows):{piv:[]},rank=R.piv.length,free=3-rank,basis=nullBasis(rows);
+    var W=460,H=210,sc=60,x0=110,y0=160;
+    var sx=function(x){return x0+x*sc;},sy=function(y){return y0-y*sc;};
+    var col=function(s){return s[0]&&s[1]?'#d62828':(s[0]?'#d4572a':(s[1]?'#2e86c1':'#8a8a8a'));};
+    var lab=function(s){return s[0]&&s[1]?'u\u2081 = u\u2082 = 0':(s[0]?'u\u2081 = 0':(s[1]?'u\u2082 = 0':'free (h = 0)'));};
+    var svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:'+W+'px;display:block;font-size:12px" role="img" aria-label="plate with supported edges">';
+    svg+='<rect x="'+sx(0)+'" y="'+sy(Ht)+'" width="'+(Wd*sc)+'" height="'+(Ht*sc)+'" fill="currentColor" fill-opacity="0.06"/>';
+    svg+='<line x1="'+sx(0)+'" y1="'+sy(0)+'" x2="'+sx(0)+'" y2="'+sy(Ht)+'" stroke="'+col(state.L)+'" stroke-width="7"/>';
+    svg+='<line x1="'+sx(Wd)+'" y1="'+sy(0)+'" x2="'+sx(Wd)+'" y2="'+sy(Ht)+'" stroke="'+col(state.R)+'" stroke-width="7"/>';
+    svg+='<line x1="'+sx(0)+'" y1="'+sy(0)+'" x2="'+sx(Wd)+'" y2="'+sy(0)+'" stroke="'+col(state.B)+'" stroke-width="7"/>';
+    svg+='<line x1="'+sx(0)+'" y1="'+sy(Ht)+'" x2="'+sx(Wd)+'" y2="'+sy(Ht)+'" stroke="'+col(state.T)+'" stroke-width="7"/>';
+    svg+='<text x="'+(sx(0)-12)+'" y="'+sy(1)+'" text-anchor="end" fill="currentColor">'+lab(state.L)+'</text>';
+    svg+='<text x="'+(sx(Wd)+12)+'" y="'+sy(1)+'" text-anchor="start" fill="currentColor">'+lab(state.R)+'</text>';
+    svg+='<text x="'+sx(2)+'" y="'+(sy(0)+22)+'" text-anchor="middle" fill="currentColor">'+lab(state.B)+'</text>';
+    svg+='<text x="'+sx(2)+'" y="'+(sy(Ht)-12)+'" text-anchor="middle" fill="currentColor">'+lab(state.T)+'</text>';
+    svg+='</svg><div style="font-size:.8em;opacity:.8">red: both fixed &nbsp; orange: u\u2081 only &nbsp; blue: u\u2082 only &nbsp; gray: no displacement prescribed</div>';
+    document.getElementById('c-fig').innerHTML=svg;
+    var names={L:'left',R:'right',B:'bottom',T:'top'};
+    var pick=function(c,fixed){var r=edges.filter(function(e){return !!state[e.k][c]===fixed;}).map(function(e){return names[e.k];});return r.length?r.join(', '):'none';};
+    document.getElementById('c-sets').innerHTML=
+      '\u0393<sub>g\u2081</sub> = '+pick(0,true)+' &nbsp;|&nbsp; \u0393<sub>h\u2081</sub> = '+pick(0,false)+'<br>'+
+      '\u0393<sub>g\u2082</sub> = '+pick(1,true)+' &nbsp;|&nbsp; \u0393<sub>h\u2082</sub> = '+pick(1,false);
+    var cls,msg;
+    if(free===0){cls='iso-ok';msg='<b>No rigid-body motion is left</b> (rank '+rank+' of 3). With a positive-definite c<sub>ijkl</sub>, the stiffness matrix K will be positive definite (Section 2.8), so the problem has a unique solution.';}
+    else{cls='iso-bad';msg='<b>'+free+' rigid-body motion'+(free>1?'s are':' is')+' still free:</b> '+basis.map(describe).join('; ')+'.<br>The body can move without straining, so K is singular. A solver reports this as a zero pivot, \u201crigid body motion\u201d or \u201cinsufficient constraints,\u201d or returns huge arbitrary displacements.';}
+    document.getElementById('c-out').innerHTML='<div class="iso-status '+cls+'">'+msg+'</div>';
+  }
+  edges.forEach(function(e){state[e.k]=presets[0][1][e.k].slice();});
+  sync();
+  bt.querySelectorAll('button')[0].classList.add('on');
+  render();
+})();
+</script>
+```
+
+Things to try:
+
+- **Cantilever.** Both components fixed on one whole edge removes all three rigid motions.
+- **Roller on the left plus roller on the bottom.** Two *single-component* edges are already enough. The left edge fixes $u_1=a-\theta y=0$ at several heights, which forces $a=0$ **and** $\theta=0$. The bottom edge then kills $b$.
+- **Left and right, $u_1$ only.** Both edges stop horizontal motion but the plate can still slide vertically.
+- **Left edge, $u_2$ only.** Fixing the vertical motion along a line at $x=0$ removes $b$ only. Translation in $x$ and rotation about the origin remain.
+
+::: {.callout-note}
+## Where is Robin (convection)? Not in 2.7
+This section has displacement conditions and traction conditions only. Remark 4 in your screenshots says more complicated boundary conditions are deferred to Exercise 5 in Section 2.12, which I have not seen. For orientation (my addition, not the book's): the structural analog of a Robin condition is a **spring-like support**, with traction $h_i=-k\,u_i$ (here $k$ is the spring stiffness per unit area). In the weak form of Part 3 it contributes $-\int k\,w_iu_i\,d\Gamma$ on the right-hand side, which you move to the left, adding a boundary term to $a(\boldsymbol w,\boldsymbol u)$. This is the same mechanism as the convection term in heat conduction: the unknown appears in the boundary term, so it changes the stiffness matrix and not just the load vector.
+:::
+
+# Part 2. Two small lemmas: symmetric and skew arrays
+
+**Goal of this part.** Learn the only genuinely new algebra in the section. Lemmas 1 and 2 are what let the weak form contain the strain-like $w_{(i,j)}$ and not the full gradient $w_{i,j}$.
+
+::: {.callout-tip}
+## What's the point?
+In the weak form, the integration by parts produces $w_{i,j}\,\sigma_{ij}$ (the **full** gradient of the test function times stress). The book's (W) contains $w_{(i,j)}\,\sigma_{ij}$ (the **symmetric part**). Lemma 2 says these are equal because stress is symmetric. The physical content: **rotations do no work against stress.**
+:::
+
+## Lemma 1: every second-rank array splits into a symmetric part and a skew part
+
+Take any $s_{ij}$ (for example the displacement gradient $u_{i,j}$). Define
+
+$$
+s_{(ij)}=\frac{s_{ij}+s_{ji}}{2},\qquad s_{[ij]}=\frac{s_{ij}-s_{ji}}{2}\tag{2.7.13, 2.7.14}
+$$
+
+where the round brackets mark the **symmetric part** and the square brackets the **skew-symmetric part**. Check each claim by algebra:
+
+- They add back to $s_{ij}$: $s_{(ij)}+s_{[ij]}=\dfrac{s_{ij}+s_{ji}+s_{ij}-s_{ji}}{2}=s_{ij}$.
+- The first is symmetric: $s_{(ji)}=\dfrac{s_{ji}+s_{ij}}{2}=s_{(ij)}$.
+- The second is skew: $s_{[ji]}=\dfrac{s_{ji}-s_{ij}}{2}=-s_{[ij]}$.
+
+*Numbers.* $\begin{bmatrix}1&4\\2&3\end{bmatrix}=\underbrace{\begin{bmatrix}1&3\\3&3\end{bmatrix}}_{\text{symmetric}}+\underbrace{\begin{bmatrix}0&1\\-1&0\end{bmatrix}}_{\text{skew}}$.
+
+## Lemma 2: a skew part contracts to zero against a symmetric array
+
+If $s_{ij}$ is any array and $t_{ij}$ is **symmetric**, then
+
+$$
+s_{ij}t_{ij}=s_{(ij)}t_{ij}\tag{2.7.15}
+$$
+
+where $s_{ij}t_{ij}$ means the double sum $\sum_i\sum_j s_{ij}t_{ij}$. Proof, line by line. By Lemma 1, $s_{ij}t_{ij}=s_{(ij)}t_{ij}+s_{[ij]}t_{ij}$, so it is enough to show $s_{[ij]}t_{ij}=0$:
+
+$$
+\begin{aligned}
+s_{[ij]}t_{ij}&=-s_{[ji]}t_{ij} &&\text{(skew: } s_{[ij]}=-s_{[ji]}\text{)}\\
+&=-s_{[ji]}t_{ji} &&\text{(symmetric: } t_{ij}=t_{ji}\text{)}\\
+&=-s_{[ij]}t_{ij} &&\text{(rename the dummy indices } i\leftrightarrow j\text{)}
+\end{aligned}
+$$
+
+A quantity that equals **minus itself** is zero. $\blacksquare$
+
+*Numbers.* With $\boldsymbol s=\begin{bmatrix}1&4\\2&3\end{bmatrix}$ and the symmetric $\boldsymbol t=\begin{bmatrix}2&1\\1&5\end{bmatrix}$: $s_{ij}t_{ij}=2+4+2+15=23$ and $s_{(ij)}t_{ij}=2+3+3+15=23$ ✓ (the skew part contributes $0\cdot2+1\cdot1+(-1)\cdot1+0\cdot5=0$).
+
+## The physical meaning: skew part of $\boldsymbol G$ = rotation
+
+Take the displacement gradient $\boldsymbol G=[u_{i,j}]$ from Step 1.1 and split it. In 2D the skew part is
+
+$$
+\boldsymbol\Omega=\begin{bmatrix}0&-\theta\\\theta&0\end{bmatrix},\qquad \theta=\frac{u_{2,1}-u_{1,2}}{2}
+$$
+
+which is a small rigid **rotation** by angle $\theta$ (displacement $\boldsymbol\Omega\boldsymbol x$ turns each point around the origin without changing any length). The symmetric part is the strain. Try it:
+
+```{=html}
+<div class="fe-widget">
+<div class="iso-btns" id="a-btns"><span class="lab">Presets:</span></div>
+<div class="fe-ctrl">
+<label for="a-g11">u₁,₁</label><input type="range" id="a-g11" min="-0.4" max="0.4" step="0.05" value="0.2"><output id="a-g11-v"></output>
+<label for="a-g12">u₁,₂</label><input type="range" id="a-g12" min="-0.4" max="0.4" step="0.05" value="-0.1"><output id="a-g12-v"></output>
+<label for="a-g21">u₂,₁</label><input type="range" id="a-g21" min="-0.4" max="0.4" step="0.05" value="0.3"><output id="a-g21-v"></output>
+<label for="a-g22">u₂,₂</label><input type="range" id="a-g22" min="-0.4" max="0.4" step="0.05" value="0.05"><output id="a-g22-v"></output>
+</div>
+<div class="iso-row"><div id="a-p1"></div><div id="a-p2"></div><div id="a-p3"></div></div>
+<div id="a-out" class="fe-out"></div>
+</div>
+<script>
+(function(){
+  var f=FE.f,ids=['a-g11','a-g12','a-g21','a-g22'],T=[[2,1],[1,5]];
+  var presets=[['Pure stretch',[0.3,0,0,0]],['Pure rotation',[0,-0.25,0.25,0]],['Simple shear',[0,0.4,0,0]],['Symmetric shear',[0,0.2,0.2,0]],['Mixed',[0.2,-0.1,0.3,0.05]]];
+  var bt=document.getElementById('a-btns');
+  presets.forEach(function(p){var b=document.createElement('button');b.type='button';b.textContent=p[0];
+    b.onclick=function(){[].forEach.call(bt.querySelectorAll('button'),function(c){c.classList.remove('on');});b.classList.add('on');
+      ids.forEach(function(id,k){var e=document.getElementById(id);e.value=p[1][k];e.dispatchEvent(new Event('input'));});};
+    bt.appendChild(b);});
+  function panel(A,color,title){
+    var W=210,H=210,v=FE.view(W,H,[-0.5,1.7,-0.5,1.7],10);
+    var sq=[[0,0],[1,0],[1,1],[0,1]];
+    var dm=sq.map(function(p){return [p[0]+A[0][0]*p[0]+A[0][1]*p[1],p[1]+A[1][0]*p[0]+A[1][1]*p[1]];});
+    var pts=function(q){return q.map(function(p){return v.sx(p[0]).toFixed(1)+','+v.sy(p[1]).toFixed(1);}).join(' ');};
+    return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:'+W+'px;display:block;font-size:12px" role="img" aria-label="'+title+'">'+
+      '<polygon points="'+pts(sq)+'" fill="none" stroke="currentColor" stroke-opacity="0.45" stroke-dasharray="4 3"/>'+
+      '<polygon points="'+pts(dm)+'" fill="'+color+'" fill-opacity="0.30" stroke="'+color+'" stroke-width="2.4"/>'+
+      '<text x="'+(W/2)+'" y="'+(H-4)+'" text-anchor="middle" fill="currentColor" opacity="0.85">'+title+'</text></svg>';}
+  function render(){
+    var g=ids.map(FE.val),G=[[g[0],g[1]],[g[2],g[3]]];
+    var m=(G[0][1]+G[1][0])/2,S=[[G[0][0],m],[m,G[1][1]]],o=(G[0][1]-G[1][0])/2,O=[[0,o],[-o,0]];
+    var theta=(G[1][0]-G[0][1])/2;
+    document.getElementById('a-p1').innerHTML=panel(G,'#d4572a','total: G x');
+    document.getElementById('a-p2').innerHTML=panel(S,'#1d9e75','strain part: S x');
+    document.getElementById('a-p3').innerHTML=panel(O,'#6c5ce7','rotation part: \u03a9 x');
+    var dd=function(A){return A[0][0]*T[0][0]+A[0][1]*T[0][1]+A[1][0]*T[1][0]+A[1][1]*T[1][1];};
+    var smallS=Math.abs(S[0][0])+Math.abs(S[1][1])+Math.abs(S[0][1])<1e-9;
+    var o2='<p style="margin:.2rem 0">G = '+FE.mat(G,['#d4572a','#d4572a'])+' = S + \u03a9 = '+FE.mat(S,['#1d9e75','#1d9e75'])+' + '+FE.mat(O,['#6c5ce7','#6c5ce7'])+'</p>';
+    o2+='<p style="margin:.2rem 0">Rotation angle \u03b8 = (u\u2082,\u2081 \u2212 u\u2081,\u2082)/2 = <b>'+f(theta,3)+'</b> rad.</p>';
+    o2+='<p style="margin:.2rem 0">Contract each with the symmetric array t = [[2, 1], [1, 5]] (a stand-in for stress): &nbsp; G : t = <b>'+f(dd(G),3)+'</b> &nbsp;&nbsp; S : t = <b>'+f(dd(S),3)+'</b> &nbsp;&nbsp; \u03a9 : t = <b>'+f(dd(O),3)+'</b></p>';
+    o2+='<div class="iso-status '+(smallS?'iso-warn':'iso-ok')+'">'+(smallS?'<b>Pure rotation.</b> The square turns but its shape does not change: strain = 0, so stress = 0 and no strain energy is stored. A rotation is free, and \u03a9 : t = 0 is why it never appears in the weak form.':'Only the <b>strain part</b> S changes the shape of the square. The rotation part \u03a9 turns it without deforming it, and \u03a9 : t is always exactly <b>0</b>, so G : t = S : t. That is Lemma 2 (2.7.15).')+'</div>';
+    document.getElementById('a-out').innerHTML=o2;
+  }
+  FE.bind(ids,render);
+})();
+</script>
+```
+
+Things to try: **Pure rotation** gives zero strain, and the middle square stays square. **Simple shear** ($u_{1,2}\ne0$ only) is **half strain and half rotation**: the tensor shear strain is $\varepsilon_{12}=u_{1,2}/2$ and the rotation angle is $\theta=-u_{1,2}/2$. The full angle change $u_{1,2}+u_{2,1}$ is called the engineering shear strain, twice the tensor value (Part 6). In every preset, the last number ($\Omega:t$) is exactly 0.
+
+# Part 3. From strong to weak: the derivation (S) ⟹ (W)
+
+**Goal of this part.** Derive the weak form (W) from (S), one line at a time, defining every symbol where it is used.
+
+::: {.callout-tip}
+## What's the point?
+This is the *proof half of Section 2.7 that a practitioner actually uses*: it shows which boundary conditions are "built in" to the function spaces and which "fall out" of the weak form. That decides what you must specify and what the program does for you.
+:::
+
+## Step 3.1: the two function spaces
+
+Let $\mathcal S_i$ be the **trial solution space** and $\mathcal V_i$ the **variation (test) space**. Each member $u_i\in\mathcal S_i$ must satisfy $u_i=g_i$ on $\Gamma_{g_i}$; each member $w_i\in\mathcal V_i$ must satisfy
+
+$$
+w_i=0\quad\text{on }\Gamma_{g_i}
+$$
+
+Read this carefully: **the test function vanishes only where the displacement is prescribed, and component by component.** It is *not* zero on all of the boundary. On $\Gamma_{h_i}$ it is free, and that freedom is how the traction condition (2.7.10) gets enforced. The book says (2.7.10) "will be a natural boundary condition."
+
+## Step 3.2: the weak formulation (W) (2.7.11)
+
+Given $f_i$, $g_i$, $h_i$, find $u_i\in\mathcal S_i$ such that for **all** $w_i\in\mathcal V_i$:
+
+$$
+\boxed{\int_\Omega w_{(i,j)}\,\sigma_{ij}\,d\Omega=\int_\Omega w_i f_i\,d\Omega+\sum_{i=1}^{n_{sd}}\left(\int_{\Gamma_{h_i}}w_i h_i\,d\Gamma\right)}\tag{2.7.11}
+$$
+
+where $\sigma_{ij}$ is still computed from $u_i$ through (2.7.1) and (2.7.2). The sum over $i$ is written out in (2.7.12): $\int_{\Gamma_{h_1}}w_1h_1\,d\Gamma+\dots+\int_{\Gamma_{h_{n_{sd}}}}w_{n_{sd}}h_{n_{sd}}\,d\Gamma$. Each component integrates over its **own** boundary piece.
+
+## Step 3.3: the derivation, step by step
+
+**Line 1: multiply and integrate.** Take (2.7.8), multiply by $w_i$ and integrate over $\Omega$. Because $i$ is repeated in $w_i(\sigma_{ij,j}+f_i)$ it is summed: you are adding the equilibrium equation of each direction, each weighted by its own test-function component.
+
+$$
+0=\int_\Omega w_i(\sigma_{ij,j}+f_i)\,d\Omega
+$$
+
+**Line 2: integrate the stress term by parts.** The product rule gives $(w_i\sigma_{ij})_{,j}=w_{i,j}\sigma_{ij}+w_i\sigma_{ij,j}$, so $w_i\sigma_{ij,j}=(w_i\sigma_{ij})_{,j}-w_{i,j}\sigma_{ij}$. Integrate this over $\Omega$ and apply the divergence theorem to the first piece (take $F_j=w_i\sigma_{ij}$ for each $i$):
+
+$$
+\int_\Omega w_i\sigma_{ij,j}\,d\Omega=\int_\Gamma w_i\,\sigma_{ij}n_j\,d\Gamma-\int_\Omega w_{i,j}\sigma_{ij}\,d\Omega
+$$
+
+Insert into Line 1:
+
+$$
+0=-\int_\Omega w_{i,j}\sigma_{ij}\,d\Omega+\int_\Gamma w_i\,\sigma_{ij}n_j\,d\Gamma+\int_\Omega w_if_i\,d\Omega
+$$
+
+**Line 3: the boundary term.** For each $i$, split $\Gamma$ into $\Gamma_{g_i}$ and $\Gamma_{h_i}$. On $\Gamma_{g_i}$, $w_i=0$, so that piece vanishes. On $\Gamma_{h_i}$, the traction condition (2.7.10) says $\sigma_{ij}n_j=h_i$. So
+
+$$
+\int_\Gamma w_i\,\sigma_{ij}n_j\,d\Gamma=\sum_{i=1}^{n_{sd}}\int_{\Gamma_{h_i}}w_ih_i\,d\Gamma
+$$
+
+**Line 4: swap in the symmetric gradient.** Stress is symmetric ($\sigma_{ij}=\sigma_{ji}$, from the first minor symmetry), so Lemma 2 with $s_{ij}=w_{i,j}$ and $t_{ij}=\sigma_{ij}$ gives $w_{i,j}\sigma_{ij}=w_{(i,j)}\sigma_{ij}$. Putting Lines 2 to 4 together,
+
+$$
+0=-\int_\Omega w_{(i,j)}\sigma_{ij}\,d\Omega+\sum_{i}\int_{\Gamma_{h_i}}w_ih_i\,d\Gamma+\int_\Omega w_if_i\,d\Omega
+$$
+
+which rearranges to (2.7.11). Hence a solution of (S) is a solution of (W). $\blacksquare$
+
+## Reading (W) as virtual work
+
+Remark 5 says (W) is the **principle of virtual work**, with $w_i$ the **virtual displacements**. Left side: stress times virtual strain, summed over the body, which is the **internal virtual work**. Right side: body force times $w_i$ plus traction times $w_i$, the **external virtual work**. Equilibrium means they balance for *every* admissible virtual displacement. A units check confirms each term is energy: stress $\times$ strain is energy per volume, force-per-volume $\times$ length is energy per volume, force-per-area $\times$ length is energy per area.
+
+## What is different from heat conduction?
+
+| | Heat conduction (scalar problem) | Elastostatics (Sec. 2.7) |
+|---|---|---|
+| Unknown | scalar temperature $u$ | vector displacement $u_i$ |
+| Test function | scalar $w$ | vector $w_i$ (virtual displacement) |
+| "Flux" | heat-flux vector $q_i=-\kappa_{ij}u_{,j}$ | stress tensor $\sigma_{ij}=c_{ijkl}\varepsilon_{kl}$ |
+| Balance law | $q_{i,i}=f$ | $\sigma_{ij,j}+f_i=0$ |
+| Material coefficient | $\kappa_{ij}$ (2 indices) | $c_{ijkl}$ (4 indices) |
+| Boundary split | one split: $\Gamma_g\cup\Gamma_h$ | one split **per component**: $\Gamma_{g_i}\cup\Gamma_{h_i}$ |
+| Derivative in weak form | full gradient $w_{,i}$ | **symmetric** gradient $w_{(i,j)}$ (needs Lemma 2) |
+| Test function vanishes on | $\Gamma_g$ | $\Gamma_{g_i}$, for each component $i$ |
+
+Same recipe, heavier bookkeeping. The only truly new *idea* is Lemma 2.
+
+# Part 4. From weak to strong: the derivation (W) ⟹ (S)
+
+**Goal of this part.** Show that (W) contains **no less and no more** than (S), by choosing test functions cleverly.
+
+::: {.callout-tip}
+## What's the point?
+This is the guarantee that when a program finds a function satisfying (W) (and the FE method only ever works with (W)), that function really satisfies **equilibrium** and **the traction boundary conditions**. These were never imposed explicitly. They came out as consequences, which is why they are called **natural** boundary conditions. Only $u_i=g_i$ was imposed by hand; it is called **essential**.
+:::
+
+## Step 4.1: undo the integration by parts
+
+Assume $u_i\in\mathcal S_i$ satisfies (W). Since $u_i\in\mathcal S_i$, condition (2.7.9) already holds. Start from (W), moved to one side:
+
+$$
+0=-\int_\Omega w_{(i,j)}\sigma_{ij}\,d\Omega+\int_\Omega w_if_i\,d\Omega+\sum_i\int_{\Gamma_{h_i}}w_ih_i\,d\Gamma
+$$
+
+Replace $w_{(i,j)}$ by $w_{i,j}$ (Lemma 2 again, in reverse), then integrate by parts the other way: $-\int_\Omega w_{i,j}\sigma_{ij}\,d\Omega=\int_\Omega w_i\sigma_{ij,j}\,d\Omega-\int_\Gamma w_i\sigma_{ij}n_j\,d\Gamma$. The boundary integral only survives on $\Gamma_{h_i}$ because $w_i=0$ on $\Gamma_{g_i}$. Collect terms:
+
+$$
+0=\int_\Omega w_i\big(\sigma_{ij,j}+f_i\big)\,d\Omega-\sum_{i}\int_{\Gamma_{h_i}}w_i\big(\sigma_{ij}n_j-h_i\big)\,d\Gamma\tag{2.7.16}
+$$
+
+Name the two brackets:
+
+$$
+\alpha_i=\sigma_{ij,j}+f_i,\qquad \beta_i=\sigma_{ij}n_j-h_i
+$$
+
+The goal is to show $\alpha_i=0$ in $\Omega$ (that is (2.7.8)) and $\beta_i=0$ on $\Gamma_{h_i}$ (that is (2.7.10)).
+
+## Step 4.2: pull out the equilibrium equation
+
+(W) holds for **every** $w_i\in\mathcal V_i$, so we get to choose. Choose
+
+$$
+w_i=\alpha_i\,\phi
+$$
+
+where $\phi$ is a smooth scalar function with $\phi>0$ inside $\Omega$ and $\phi=0$ on the whole boundary $\Gamma$. (Because it is zero on all of $\Gamma$, it is zero on $\Gamma_{g_i}$, so $w_i\in\mathcal V_i$.) Because $\phi=0$ on $\Gamma$, **every boundary integral in (2.7.16) vanishes**, leaving
+
+$$
+0=\int_\Omega\underbrace{\alpha_i\alpha_i}_{\ge0}\;\underbrace{\phi}_{>0}\,d\Omega
+$$
+
+where $\alpha_i\alpha_i=\alpha_1^2+\alpha_2^2+\cdots\ge0$ is a sum of squares. An integral of a non-negative continuous function is zero only if the function is zero everywhere, so $\alpha_i=0$ in $\Omega$. That is the equilibrium equation.
+
+## Step 4.3: pull out the traction condition
+
+With $\alpha_i=0$, (2.7.16) reduces to $0=-\sum_i\int_{\Gamma_{h_i}}w_i\beta_i\,d\Gamma$. Now choose test functions that *do not* vanish on $\Gamma_{h_1}$:
+
+$$
+w_i=\delta_{i1}\,\beta_1\,\psi
+$$
+
+where $\delta_{i1}$ (the **Kronecker delta**) is $1$ if $i=1$ and $0$ otherwise, so only component 1 is switched on, and $\psi$ is a smooth function with $\psi>0$ on $\Gamma_{h_1}$ and $\psi=0$ on $\Gamma_{g_1}$ (so $w_1=0$ where it must be). Then
+
+$$
+0=\int_{\Gamma_{h_1}}\beta_1^2\,\psi\,d\Gamma
+$$
+
+and the same non-negativity argument gives $\beta_1=0$ on $\Gamma_{h_1}$. Repeat with $\delta_{i2}$, and so on, to get $\beta_i=0$ on every $\Gamma_{h_i}$. That is (2.7.10). Hence a solution of (W) is a solution of (S). $\blacksquare$
+
+**The theorem, in the book's words,** assumes all functions are smooth enough to justify these manipulations. In a finite element solution they are *not* smooth across element boundaries, which Part 7 turns into a practical warning.
+
+## Step 4.4: what "natural" means for your models
+
+- **Essential** condition ($u_i=g_i$): you must **say** it. It is built into the function spaces. A support you forget to apply is simply not there.
+- **Natural** conditions (equilibrium and $\sigma_{ij}n_j=h_i$): they come **for free** from (W). On a part of the boundary where you prescribe nothing, (W) quietly enforces $\sigma_{ij}n_j=0$: that surface is **traction-free**. You never type that in.
+
+# Part 5. The compact notation $a(\cdot,\cdot)$
+
+**Goal of this part.** Learn the shorthand that makes the rest of the book readable.
+
+$$
+\begin{aligned}
+a(\boldsymbol w,\boldsymbol u)&=\int_\Omega w_{(i,j)}\,c_{ijkl}\,u_{(k,l)}\,d\Omega &&(2.7.17)\\
+(\boldsymbol w,\boldsymbol f)&=\int_\Omega w_if_i\,d\Omega &&(2.7.18)\\
+(\boldsymbol w,\boldsymbol h)_\Gamma&=\sum_{i=1}^{n_{sd}}\left(\int_{\Gamma_{h_i}}w_ih_i\,d\Gamma\right) &&(2.7.19)
+\end{aligned}
+$$
+
+where $a(\boldsymbol w,\boldsymbol u)$ is the left side of (W) written with Hooke's law inserted ($\sigma_{ij}=c_{ijkl}u_{(k,l)}$, because $\varepsilon_{kl}=u_{(k,l)}$). Then (W) becomes
+
+$$
+\boxed{a(\boldsymbol w,\boldsymbol u)=(\boldsymbol w,\boldsymbol f)+(\boldsymbol w,\boldsymbol h)_\Gamma}\tag{2.7.20}
+$$
+
+Two words you will keep meeting:
+
+- **Bilinear**: $a(\boldsymbol w,\boldsymbol u)$ is linear in $\boldsymbol w$ when $\boldsymbol u$ is held fixed, and linear in $\boldsymbol u$ when $\boldsymbol w$ is held fixed. This is because differentiation, multiplication by constants $c_{ijkl}$, and integration are all linear.
+- **Symmetric**: $a(\boldsymbol w,\boldsymbol u)=a(\boldsymbol u,\boldsymbol w)$. This follows from the **major symmetry** $c_{ijkl}=c_{klij}$. (Exercise 1 asks you to verify it; **hint:** swap the names of the dummy indices $i\leftrightarrow k$ and $j\leftrightarrow l$, as in the proof of Lemma 2.)
+
+**Why this notation exists.** Once the problem is written as (2.7.20), the Galerkin machinery of Chapter 1 carries over without rewriting: choose finite-dimensional spaces, plug in basis functions, and the entries of $\boldsymbol K$ become $a(\text{basis}_A,\text{basis}_B)$. The symmetry of $a$ is what makes $\boldsymbol K$ symmetric, a fact Section 2.8 is built to prove (the next heading in your last screenshot).
+
+# Part 6. Index-free form: the table, the matrix $\boldsymbol D$
+
+**Goal of this part.** Replace the 4-index array $c_{ijkl}$ and the double sums by small matrices a computer can multiply.
+
+::: {.callout-tip}
+## What's the point?
+This is where the notation of the textbook meets the notation of a FE program. The result, $a(\boldsymbol w,\boldsymbol u)=\int_\Omega\boldsymbol\varepsilon(\boldsymbol w)^T\boldsymbol D\,\boldsymbol\varepsilon(\boldsymbol u)\,d\Omega$, is the template for the element stiffness matrix: once $\boldsymbol\varepsilon(\boldsymbol u)$ is written as a matrix times the nodal displacements, the integrand becomes $\boldsymbol B^T\boldsymbol D\boldsymbol B$ (coming in later sections).
+:::
+
+For concreteness the book takes $n_{sd}=2$, so $1\le i,j,k,l\le2$.
+
+## Step 6.1: the strain vector (2.7.21, 2.7.22)
+
+$$
+\boldsymbol\varepsilon(\boldsymbol u)=\{\varepsilon_I(\boldsymbol u)\}=\begin{Bmatrix}u_{1,1}\\u_{2,2}\\u_{1,2}+u_{2,1}\end{Bmatrix},\qquad
+\boldsymbol\varepsilon(\boldsymbol w)=\begin{Bmatrix}w_{1,1}\\w_{2,2}\\w_{1,2}+w_{2,1}\end{Bmatrix}
+$$
+
+where the index $I=1,2,3$ labels the three entries. The strain tensor is symmetric ($\varepsilon_{21}=\varepsilon_{12}$), so its four entries carry only **three** independent numbers, and the vector keeps one copy of each. Look at the third entry: it is $u_{1,2}+u_{2,1}=\mathbf{2}\,\varepsilon_{12}$, with **no factor $\tfrac12$**. This is the **engineering shear strain** $\gamma_{12}=2\varepsilon_{12}$.
+
+::: {.callout-warning}
+Software and textbooks differ on whether they report the **tensor** shear strain $\varepsilon_{12}$ or the **engineering** shear strain $\gamma_{12}=2\varepsilon_{12}$. Before you compare a program's shear strain with a hand calculation, check the manual. The factor of 2 comes from exactly this step.
+:::
+
+## Step 6.2: the matrix $\boldsymbol D$ and Table 2.7.1 (2.7.23, 2.7.24)
+
+$$
+\boldsymbol D=[D_{IJ}]=\begin{bmatrix}D_{11}&D_{12}&D_{13}\\&D_{22}&D_{23}\\\text{symmetric}&&D_{33}\end{bmatrix},\qquad D_{IJ}=c_{ijkl}\tag{2.7.23, 2.7.24}
+$$
+
+where the capital indices $I,J$ run over $1,2,3$ and are tied to the lowercase pairs $(i,j)$ and $(k,l)$ by Table 2.7.1. $\boldsymbol D$ is symmetric because of the major symmetry.
+
+::: {.callout-note}
+## The table you asked about
+Table 2.7.1 is **not** a four-dimensional array. It is a **lookup table** with four rows that says which pair of coordinate indices becomes which single index. As printed in your screenshot:
+
+| row | $I$ (or $J$) | $i$ (or $k$) | $j$ (or $l$) |
+|:-:|:-:|:-:|:-:|
+| 1 | 1 | 1 | 1 |
+| 2 | 3 | 1 | 2 |
+| 3 | 3 | 2 | 1 |
+| 4 | 2 | 2 | 2 |
+
+Read it row by row: the pair $(i,j)=(1,1)$ becomes $I=1$; $(1,2)$ becomes $I=3$; $(2,1)$ **also** becomes $I=3$; $(2,2)$ becomes $I=2$. Use the same table with $(k,l)$ to get $J$. The four-index array $c_{ijkl}$ itself has $2^4=16$ entries in 2D, and the lookup table is the dictionary that compresses it to the $3\times3$ symmetric matrix $\boldsymbol D$ (6 independent entries).
+:::
+
+The book says the indices are "collapsed" using the symmetries of $c_{ijkl}$, $u_{(k,l)}$ and $w_{(i,j)}$, so $I$ and $J$ range over $1,\dots,n_{sd}(n_{sd}+1)/2$: three values in 2D, six in 3D (those six are why 3D strain vectors have six entries, as in (2.7.27)).
+
+## Step 6.3: why the collapse works (the idea behind (2.7.25))
+
+The book states, "It can be shown that"
+
+$$
+w_{(i,j)}\,c_{ijkl}\,u_{(k,l)}=\boldsymbol\varepsilon(\boldsymbol w)^T\,\boldsymbol D\,\boldsymbol\varepsilon(\boldsymbol u)\tag{2.7.25}
+$$
+
+and Exercise 2 asks you to verify it for $n_{sd}=2$, so I will give the *mechanism* and one worked term, and leave the full verification to you. In the double sum over $(i,j)$ in 2D there are four terms: $(1,1),(2,2),(1,2),(2,1)$. Because $w_{(i,j)}$ is symmetric, the terms $(1,2)$ and $(2,1)$ carry the **same** value $w_{(1,2)}$. By the minor symmetries of $c_{ijkl}$ they also carry equal coefficients. So the two shear terms merge into one term with a factor of **2**, and the same happens for $(k,l)$. That factor 2 per shear index is exactly what the engineering shear strain $\varepsilon_3=2w_{(1,2)}$ absorbs.
+
+*One worked term (shear with shear).* All four coefficients $c_{1212},c_{1221},c_{2112},c_{2121}$ are equal (minor symmetries), and they all multiply $w_{(1,2)}u_{(1,2)}$:
+
+$$
+4\,c_{1212}\,w_{(1,2)}u_{(1,2)}=c_{1212}\,\big(2w_{(1,2)}\big)\big(2u_{(1,2)}\big)=\varepsilon_3(\boldsymbol w)\,D_{33}\,\varepsilon_3(\boldsymbol u),\qquad D_{33}=c_{1212}
+$$
+
+The cross and normal terms are the same idea (and are Exercise 2). The result:
+
+$$
+\boxed{a(\boldsymbol w,\boldsymbol u)=\int_\Omega\boldsymbol\varepsilon(\boldsymbol w)^T\,\boldsymbol D\,\boldsymbol\varepsilon(\boldsymbol u)\,d\Omega}\tag{2.7.26}
+$$
+
+where $\boldsymbol\varepsilon(\boldsymbol w)^T\boldsymbol D\,\boldsymbol\varepsilon(\boldsymbol u)$ is a row vector times a matrix times a column vector, which is a single number. Exercise 4 then asks you to show that the stress vector is $\boldsymbol\sigma=\boldsymbol D\,\boldsymbol\varepsilon(\boldsymbol u)$ with $\boldsymbol\sigma=\{\sigma_{11},\sigma_{22},\sigma_{12}\}^T$ in 2D, and Exercise 3 extends Table 2.7.1 to 3D using the ordering in (2.7.27).
+
+## Step 6.4: the isotropic case (2.7.31 to 2.7.35)
+
+For an **isotropic** material (same in every direction), (2.7.31) says
+
+$$
+c_{ijkl}=\mu\,\big(\delta_{ik}\delta_{jl}+\delta_{il}\delta_{jk}\big)+\lambda\,\delta_{ij}\delta_{kl}
+$$
+
+where $\delta_{ij}$ is the Kronecker delta ($1$ if $i=j$, else $0$) and $\lambda,\mu$ are the **Lamé parameters**, tied to Young's modulus $E$ and Poisson's ratio $\nu$ by
+
+$$
+\lambda=\frac{\nu E}{(1+\nu)(1-2\nu)},\qquad \mu=\frac{E}{2(1+\nu)}\tag{2.7.32, 2.7.33}
+$$
+
+($\mu$ is the shear modulus, also written $G$). *One entry as an illustration:* $D_{11}=c_{1111}=\mu(1\cdot1+1\cdot1)+\lambda(1\cdot1)=\lambda+2\mu$. Exercise 5 asks you to build all of $\boldsymbol D$; the book's hint for $n_{sd}=2$ is
+
+$$
+\boldsymbol D=\begin{bmatrix}\lambda+2\mu&\lambda&0\\&\lambda+2\mu&0\\\text{symmetric}&&\mu\end{bmatrix}\tag{2.7.34}
+$$
+
+which the book says **manifests the plane strain hypothesis**. For **plane stress**, Remark 9 says replace $\lambda$ by $\bar\lambda=\dfrac{2\lambda\mu}{\lambda+2\mu}$ (2.7.35).
+
+## Step 6.5: explore it, and check (2.7.25) numerically
+
+**Part A.** Pick a pair $(i,j)$ and a pair $(k,l)$. The box converts each to $I$ and $J$ with Table 2.7.1, evaluates $c_{ijkl}$ from the isotropic formula (2.7.31), and highlights the matching entry $D_{IJ}$. They always agree.
+
+**Part B.** Press **New random $\boldsymbol w$ and $\boldsymbol u$** to draw random displacement-gradient matrices (these need not be physical, since (2.7.25) is pure algebra). The box computes the left side of (2.7.25) with the full 16-term index sum and the right side with the $3\times3$ matrix, and shows the difference. Use it to check your Exercise 2 and 5 answers. Slide $\nu$ toward $0.5$ and watch $\lambda$ blow up, since $\lambda\propto1/(1-2\nu)$. That is the source of **volumetric locking** in nearly incompressible materials, a topic for later in the course.
+
+```{=html}
+<div class="fe-widget">
+<div class="iso-btns" id="b-mode"><span class="lab">2D idealization:</span></div>
+<div class="fe-ctrl">
+<label for="b-E">E (GPa)</label><input type="range" id="b-E" min="1" max="400" step="1" value="200"><output id="b-E-v"></output>
+<label for="b-nu">ν</label><input type="range" id="b-nu" min="0" max="0.49" step="0.01" value="0.30"><output id="b-nu-v"></output>
+</div>
+<div id="b-par" class="fe-out"></div>
+<hr>
+<div class="iso-btns" id="b-ij"><span class="lab">(i, j):</span></div>
+<div class="iso-btns" id="b-kl"><span class="lab">(k, l):</span></div>
+<div class="iso-row"><div id="b-pick" class="iso-wide"></div><div id="b-D"></div></div>
+<hr>
+<div class="iso-btns"><button type="button" id="b-new">New random w and u</button></div>
+<div id="b-chk" class="fe-out"></div>
+</div>
+<script>
+(function(){
+  var f=FE.f,mode='strain',pij=[1,2],pkl=[1,2];
+  var pairs=[[1,1],[2,2],[1,2],[2,1]];
+  var d=function(a,b){return a===b?1:0;};
+  var idx=function(i,j){return i===j?i:3;};
+  function mats(){
+    var E=FE.val('b-E'),nu=FE.val('b-nu'),mu=E/(2*(1+nu)),lam=nu*E/((1+nu)*(1-2*nu)),lbar=2*lam*mu/(lam+2*mu);
+    var l=(mode==='strain')?lam:lbar;
+    var D=[[l+2*mu,l,0],[l,l+2*mu,0],[0,0,mu]];
+    var c=function(i,j,k,m){return mu*(d(i,k)*d(j,m)+d(i,m)*d(j,k))+l*(d(i,j)*d(k,m));};
+    return {E:E,nu:nu,mu:mu,lam:lam,lbar:lbar,l:l,D:D,c:c};}
+  function mkBtns(id,get,set){
+    var el=document.getElementById(id);
+    pairs.forEach(function(p){var b=document.createElement('button');b.type='button';b.textContent='('+p[0]+', '+p[1]+')';
+      b.onclick=function(){set(p);renderPick();};el.appendChild(b);});}
+  mkBtns('b-ij',function(){return pij;},function(p){pij=p;});
+  mkBtns('b-kl',function(){return pkl;},function(p){pkl=p;});
+  var mb=document.getElementById('b-mode');
+  [['strain','Plane strain  (\u03bb as is)'],['stress','Plane stress  (\u03bb \u2192 \u03bb\u0304)']].forEach(function(m){
+    var b=document.createElement('button');b.type='button';b.textContent=m[1];
+    b.onclick=function(){mode=m[0];renderAll();};mb.appendChild(b);});
+  function mark(){
+    [].forEach.call(document.getElementById('b-ij').querySelectorAll('button'),function(b,k){b.classList.toggle('on',pairs[k][0]===pij[0]&&pairs[k][1]===pij[1]);});
+    [].forEach.call(document.getElementById('b-kl').querySelectorAll('button'),function(b,k){b.classList.toggle('on',pairs[k][0]===pkl[0]&&pairs[k][1]===pkl[1]);});
+    [].forEach.call(mb.querySelectorAll('button'),function(b,k){b.classList.toggle('on',(k===0)===(mode==='strain'));});}
+  function renderPick(){
+    mark();
+    var m=mats(),i=pij[0],j=pij[1],k=pkl[0],l=pkl[1],I=idx(i,j),J=idx(k,l),cv=m.c(i,j,k,l),dv=m.D[I-1][J-1];
+    var lamName=(mode==='strain')?'\u03bb':'\u03bb\u0304';
+    var s='<p style="margin:.2rem 0">Table 2.7.1: (i, j) = ('+i+', '+j+') \u2192 <b>I = '+I+'</b> &nbsp;&nbsp; (k, l) = ('+k+', '+l+') \u2192 <b>J = '+J+'</b></p>';
+    s+='<p style="margin:.2rem 0">c<sub>'+i+j+k+l+'</sub> = \u03bc(\u03b4<sub>ik</sub>\u03b4<sub>jl</sub> + \u03b4<sub>il</sub>\u03b4<sub>jk</sub>) + '+lamName+'\u03b4<sub>ij</sub>\u03b4<sub>kl</sub> = '+f(m.mu,1)+'('+d(i,k)+'\u00b7'+d(j,l)+' + '+d(i,l)+'\u00b7'+d(j,k)+') + '+f(m.l,1)+'('+d(i,j)+'\u00b7'+d(k,l)+') = <b>'+f(cv,2)+'</b> GPa</p>';
+    s+='<p style="margin:.2rem 0">D<sub>'+I+J+'</sub> from (2.7.34) = <b>'+f(dv,2)+'</b> GPa &nbsp;'+(Math.abs(cv-dv)<1e-9?'\u2713 equal':'\u2717 not equal')+'</p>';
+    document.getElementById('b-pick').innerHTML=s;
+    var t='<table class="fe-table"><tr><th></th><th>J=1</th><th>J=2</th><th>J=3</th></tr>';
+    for(var r=1;r<=3;r++){t+='<tr><th>I='+r+'</th>';for(var q=1;q<=3;q++)t+='<td'+((r===I&&q===J)?' class="hl"':'')+'>'+f(m.D[r-1][q-1],1)+'</td>';t+='</tr>';}
+    document.getElementById('b-D').innerHTML=t+'</table>';}
+  var gw=[0,0,0,0],gu=[0,0,0,0];
+  function rnd(){return Math.random()*2-1;}
+  function renderChk(){
+    var m=mats(),sym=function(g){var s=(g[1]+g[2])/2;return [[g[0],s],[s,g[3]]];};
+    var Wm=sym(gw),Um=sym(gu),lhs=0;
+    for(var i=0;i<2;i++)for(var j=0;j<2;j++)for(var k=0;k<2;k++)for(var l=0;l<2;l++)lhs+=Wm[i][j]*m.c(i+1,j+1,k+1,l+1)*Um[k][l];
+    var ew=[gw[0],gw[3],gw[1]+gw[2]],eu=[gu[0],gu[3],gu[1]+gu[2]],rhs=0;
+    for(var I=0;I<3;I++)for(var J=0;J<3;J++)rhs+=ew[I]*m.D[I][J]*eu[J];
+    var diff=Math.abs(lhs-rhs);
+    var s='<p style="margin:.2rem 0">w gradient [w\u2081,\u2081 w\u2081,\u2082; w\u2082,\u2081 w\u2082,\u2082] = '+FE.mat([[gw[0],gw[1]],[gw[2],gw[3]]])+' &nbsp; u gradient = '+FE.mat([[gu[0],gu[1]],[gu[2],gu[3]]])+'</p>';
+    s+='<p style="margin:.2rem 0">\u03b5(w) = ['+ew.map(function(x){return f(x,3);}).join(', ')+']<sup>T</sup> &nbsp; \u03b5(u) = ['+eu.map(function(x){return f(x,3);}).join(', ')+']<sup>T</sup></p>';
+    s+='<p style="margin:.2rem 0">Left side of (2.7.25), 16-term index sum: <b>'+lhs.toFixed(6)+'</b><br>Right side, \u03b5(w)<sup>T</sup> D \u03b5(u): <b>'+rhs.toFixed(6)+'</b></p>';
+    s+='<div class="iso-status '+(diff<1e-8*Math.max(1,Math.abs(lhs))?'iso-ok':'iso-bad')+'">|left \u2212 right| = '+diff.toExponential(1)+'. '+(diff<1e-8*Math.max(1,Math.abs(lhs))?'They agree to rounding error: (2.7.25) holds, including the skew parts of the random gradients, which drop out of both sides.':'They disagree.')+'</div>';
+    document.getElementById('b-chk').innerHTML=s;}
+  function renderPar(){
+    var m=mats();
+    document.getElementById('b-par').innerHTML='\u03bc = E / (2(1+\u03bd)) = <b>'+f(m.mu,1)+'</b> GPa &nbsp;\u00b7&nbsp; \u03bb = \u03bdE / ((1+\u03bd)(1\u22122\u03bd)) = <b>'+f(m.lam,1)+'</b> GPa &nbsp;\u00b7&nbsp; \u03bb\u0304 = 2\u03bb\u03bc / (\u03bb+2\u03bc) = <b>'+f(m.lbar,1)+'</b> GPa &nbsp;\u00b7&nbsp; \u03bb/\u03bc = <b>'+f(m.lam/m.mu,1)+'</b>';}
+  function renderAll(){renderPar();renderPick();renderChk();}
+  document.getElementById('b-new').onclick=function(){gw=[rnd(),rnd(),rnd(),rnd()];gu=[rnd(),rnd(),rnd(),rnd()];renderChk();};
+  gw=[rnd(),rnd(),rnd(),rnd()];gu=[rnd(),rnd(),rnd(),rnd()];
+  FE.bind(['b-E','b-nu'],renderAll);
+})();
+</script>
+```
+
+# Part 7. What this means for models you will evaluate
+
+**Goal of this part.** Turn the section into a checklist.
+
+| When you look at a structural FE model... | ...Section 2.7 says |
+|---|---|
+| Each support or constraint | It is a piece of $\Gamma_{g_i}$, **per component**. A roller is "fixed in one component, free in the other." Check each component separately. |
+| An edge or face where you applied nothing | It is in $\Gamma_{h_i}$ with $h_i=0$: **traction-free**, silently. Nothing "defaults to fixed." |
+| "Rigid body motion" or "insufficient constraints" error | $\boldsymbol K$ is singular because $\Gamma_{g}$ does not remove all rigid motions (3 in 2D, 6 in 3D). Use the plate box in Step 1.6 to see how few conditions suffice and which combinations do not. |
+| Loads | Surface loads are $h_i$ (traction); gravity and inertia are $f_i$. Both enter only the right-hand side of (W). |
+| Material | $E,\nu$ set $\lambda,\mu$ and therefore $c_{ijkl}$ and $\boldsymbol D$. Watch $\nu\to0.5$: $\lambda\to\infty$. |
+| A 2D model | Plane strain and plane stress use **different** $\boldsymbol D$ (the book's $\lambda$ versus $\bar\lambda$). Choosing the wrong idealization changes the stiffness silently. |
+| Shear strain output | Tensor ($\varepsilon_{12}$) or engineering ($2\varepsilon_{12}$)? Differs by 2. |
+| Stress contours across element edges | The equivalence theorem assumed smooth functions. In FE, $u^h_i$ is continuous but its gradient jumps across element edges, so **stress jumps** there, and $\sigma_{ij}n_j$ is continuous across an edge only approximately. Exercise 6 shows that continuity of this traction (the "jump" $[\sigma_{in}]=0$) is exactly what (W) enforces in the limit. Contour plots are often **averaged at nodes**, which hides the jumps; the size of the unaveraged jump is a built-in error indicator. |
+
+Next in the book: **Section 2.8**, the Galerkin formulation, where $\mathcal S$ and $\mathcal V$ are replaced by finite-dimensional spaces $\mathcal S^h$ and $\mathcal V^h$, and the symmetry and positive-definiteness of $\boldsymbol K$ are proved. Everything from this page is an input.
+
+# Check yourself
+
+1. A 2D body sits on a frictionless roller along its bottom edge ($y=0$): it cannot move vertically but can slide horizontally with no friction. Which of $\Gamma_{g_1},\Gamma_{h_1},\Gamma_{g_2},\Gamma_{h_2}$ contains the bottom edge, and what is the value of the prescribed data?
+
+::: {.callout-note collapse="true"}
+## Answer
+
+The vertical displacement is prescribed: $u_2=g_2=0$, so the edge is in $\Gamma_{g_2}$. The horizontal direction is frictionless, so the tangential traction is prescribed to be zero: $\sigma_{1j}n_j=h_1=0$, so the edge is in $\Gamma_{h_1}$. One physical edge belongs to $\Gamma_g$ for one component and $\Gamma_h$ for the other, which is why (2.7.7) is stated for each $i$ separately.
+:::
+
+2. Why must test functions vanish on $\Gamma_{g_i}$ but **not** on $\Gamma_{h_i}$? What goes wrong if you force them to vanish on all of $\Gamma$?
+
+::: {.callout-note collapse="true"}
+## Answer
+
+On $\Gamma_{g_i}$ the displacement is prescribed, so there is nothing to vary: the trial functions all have the same value there, so the *difference* between trial functions (the variation) is zero. On $\Gamma_{h_i}$ the displacement is unknown, and the freedom of $w_i$ there is what lets (W) carry the traction condition: Part 4, Step 4.3 needs $w_i\ne0$ on $\Gamma_{h_i}$ to extract $\beta_i=0$. If every $w_i$ vanished on all of $\Gamma$, the boundary integrals in (W) would disappear, the traction condition could never be recovered, and the model would silently not impose the loads or the traction-free surfaces you thought it did.
+:::
+
+3. A body is rotated rigidly by a small angle $\theta$: $u_1=-\theta y$, $u_2=\theta x$. Find $\boldsymbol G$, $\boldsymbol\varepsilon$ and $\boldsymbol\sigma$.
+
+::: {.callout-note collapse="true"}
+## Answer
+
+$u_{1,1}=0$, $u_{1,2}=-\theta$, $u_{2,1}=\theta$, $u_{2,2}=0$, so $\boldsymbol G=\begin{bmatrix}0&-\theta\\\theta&0\end{bmatrix}$, which is skew. The strain is its symmetric part: $\varepsilon_{12}=\tfrac12(-\theta+\theta)=0$, and all other entries are $0$, so $\boldsymbol\varepsilon=\boldsymbol0$ and $\boldsymbol\sigma=\boldsymbol D\boldsymbol\varepsilon=\boldsymbol0$. A rigid rotation produces no stress and stores no energy, which is why the weak form uses only the symmetric part of the gradient and why a model needs enough supports to stop it.
+:::
+
+4. For $E=200$ GPa compute $\lambda$ and $\mu$ at $\nu=0.3$ and at $\nu=0.499$. What happens to the ratio $\lambda/\mu$?
+
+::: {.callout-note collapse="true"}
+## Answer
+
+At $\nu=0.3$: $\mu=200/(2\cdot1.3)\approx76.9$ GPa and $\lambda=0.3\cdot200/(1.3\cdot0.4)\approx115.4$ GPa, so $\lambda/\mu\approx1.5$. At $\nu=0.499$: $\mu=200/(2\cdot1.499)\approx66.7$ GPa but $\lambda=0.499\cdot200/(1.499\cdot0.002)\approx33{,}300$ GPa, so $\lambda/\mu\approx500$. The shear stiffness barely moves while the volumetric stiffness explodes. That huge imbalance in $\boldsymbol D$ is the root of volumetric locking.
+:::
