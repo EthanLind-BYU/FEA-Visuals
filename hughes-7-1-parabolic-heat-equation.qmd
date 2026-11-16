@@ -1,0 +1,866 @@
+---
+title: "Heat flow in time: from the heat equation to M d′ + K d = F"
+subtitle: "Hughes, Section 7.1 (the parabolic case): strong form, weak form, Galerkin, and the matrix problem, step by step"
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    respect-user-color-scheme: true
+    toc: true
+    toc-depth: 2
+    toc-expand: 1
+    toc-location: left
+    embed-resources: true
+    html-math-method: mathjax
+    fontsize: 1.05em
+    callout-appearance: simple
+execute:
+  echo: false
+---
+
+```{=html}
+<style>
+.eng{border-left:4px solid #1d9e75;background:rgba(29,158,117,.08);padding:.55rem .95rem;border-radius:4px;margin:1.1rem 0}
+.eng>p:last-child{margin-bottom:0}
+.aha{border-left:4px solid #d4572a;background:rgba(212,87,42,.08);padding:.55rem .95rem;border-radius:4px;margin:1.1rem 0}
+.aha>p:last-child{margin-bottom:0}
+.goal{border-left:4px solid #6c5ce7;background:rgba(108,92,231,.08);padding:.55rem .95rem;border-radius:4px;margin:1.1rem 0}
+.goal>p:last-child{margin-bottom:0}
+main h1{margin-top:3rem}
+main h2{margin-top:2.2rem}
+.fe-widget{border:1px solid rgba(128,128,128,.35);border-radius:8px;padding:12px 14px;margin:1.4rem 0}
+.fe-ctrl{display:grid;grid-template-columns:minmax(110px,max-content) minmax(0,1fr) 4.5em;gap:6px 12px;align-items:center;margin-bottom:8px}
+.fe-ctrl.wide{grid-template-columns:minmax(200px,max-content) minmax(0,1fr) 5em}
+.fe-ctrl output{text-align:right;font-variant-numeric:tabular-nums}
+.fe-legend{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:.85em;margin:4px 0}
+.fe-legend i{display:inline-block;width:18px;height:0;border-top:3px solid;vertical-align:middle;margin-right:6px}
+.fe-out{margin:.5rem 0 0;font-variant-numeric:tabular-nums;line-height:1.6}
+.fe-table{border-collapse:collapse;font-variant-numeric:tabular-nums;margin:.3rem 0 .6rem;line-height:1.35}
+.fe-table td,.fe-table th{padding:3px 10px;text-align:center;border:1px solid rgba(128,128,128,.25)}
+.fe-table th{font-weight:600;background:rgba(128,128,128,.10)}
+.fe-table td.new{background:rgba(29,158,117,.28);font-weight:600}
+.fe-table.mx td,.fe-table.mx th{padding:2px 8px}
+.fe-table.mx td.dim{opacity:.3}
+.fe-table.mx td.fre{background:rgba(29,158,117,.16)}
+.fe-btns{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;align-items:center}
+.fe-btns .lab{font-size:.85em;opacity:.75}
+.fe-btns button{font:inherit;font-size:.85em;padding:3px 10px;border-radius:14px;border:1px solid rgba(128,128,128,.5);background:transparent;color:inherit;cursor:pointer}
+.fe-btns button:hover{border-color:#d4572a}
+.fe-btns button.on{background:#d4572a;border-color:#d4572a;color:#fff}
+.fe-row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+.fe-row>div{flex:1 1 280px;min-width:0}
+.scroll-x{overflow-x:auto;max-width:100%}
+.fe-cap{font-size:.85em;opacity:.8;margin:.2rem 0 .1rem;line-height:1.4}
+.fe-status{margin-top:.6rem;padding:8px 12px;border-radius:6px;border-left:4px solid;line-height:1.5}
+.fe-ok{border-color:#1d9e75;background:rgba(29,158,117,.10)}
+.fe-bad{border-color:#d62828;background:rgba(214,40,40,.10)}
+.fe-warn{border-color:#d4572a;background:rgba(212,87,42,.10)}
+main table.table{display:block;max-width:100%;overflow-x:auto}
+.math.display,mjx-container[display="true"]{display:block;max-width:100%;overflow-x:auto;overflow-y:hidden}
+@media (max-width:600px){.fe-ctrl,.fe-ctrl.wide{grid-template-columns:minmax(0,1fr) 4.5em}.fe-ctrl label{grid-column:1/-1;margin-top:4px}}
+</style>
+<script>
+window.FE=(function(){
+  const C={orange:'#d4572a',purple:'#6c5ce7',teal:'#1d9e75',gray:'#8a8a8a',blue:'#2e86c1',red:'#d62828'};
+  function niceStep(raw){const p=Math.pow(10,Math.floor(Math.log10(raw)));const r=raw/p;return (r<1.5?1:r<3?2:r<7?5:10)*p;}
+  function ticks(a,b,n){const st=niceStep((b-a)/n);const out=[];for(let v=Math.ceil(a/st-1e-9)*st;v<=b+1e-9;v+=st)out.push(Math.abs(v)<st*1e-6?0:v);return out;}
+  function fmt(v){return Math.abs(v)<1e-9?'0':String(+v.toPrecision(3));}
+  let clipN=0;
+  function plot(id,o){
+    const W=o.w||640,H=o.height||280,m={l:o.ml||52,r:20,t:22,b:o.xlabel?46:28};
+    const x0=o.x[0],x1=o.x[1],y0=o.y[0],y1=o.y[1];
+    const sx=v=>m.l+(v-x0)/(x1-x0)*(W-m.l-m.r), sy=v=>H-m.b-(v-y0)/(y1-y0)*(H-m.t-m.b);
+    const cid='clip'+(++clipN);
+    let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;display:block;font-size:13px" role="img" aria-label="${o.label||'plot'}">`;
+    s+=`<defs><clipPath id="${cid}"><rect x="${m.l}" y="${m.t}" width="${W-m.l-m.r}" height="${H-m.t-m.b}"/></clipPath></defs>`;
+    const grid='stroke="currentColor" stroke-opacity="0.12"';
+    (o.xtk||ticks(x0,x1,o.xt||6).map(t=>[t,fmt(t)])).forEach(([t,lab])=>{s+=`<line x1="${sx(t)}" x2="${sx(t)}" y1="${m.t}" y2="${H-m.b}" ${grid}/><text x="${sx(t)}" y="${H-m.b+16}" text-anchor="middle" fill="currentColor">${lab}</text>`;});
+    (o.ytk||ticks(y0,y1,o.yt||5).map(t=>[t,fmt(t)])).forEach(([t,lab])=>{s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${sy(t)}" y2="${sy(t)}" ${grid}/><text x="${m.l-8}" y="${sy(t)+4}" text-anchor="end" fill="currentColor">${lab}</text>`;});
+    if(y0<0&&y1>0)s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${sy(0)}" y2="${sy(0)}" stroke="currentColor" stroke-opacity="0.45"/>`;
+    s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${H-m.b}" y2="${H-m.b}" stroke="currentColor" stroke-opacity="0.5"/>`;
+    if(o.xlabel) s+=`<text x="${(m.l+W-m.r)/2}" y="${H-6}" text-anchor="middle" fill="currentColor" opacity="0.8">${o.xlabel}</text>`;
+    if(o.ylabel) s+=`<text x="${m.l}" y="${m.t-8}" text-anchor="start" fill="currentColor" opacity="0.8">${o.ylabel}</text>`;
+    s+=`<g clip-path="url(#${cid})">`;
+    (o.hlines||[]).forEach(l=>{s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${sy(l.y)}" y2="${sy(l.y)}" stroke="${l.color}" stroke-width="1.6" ${l.dash?'stroke-dasharray="6 4"':''}/>`;});
+    (o.lines||[]).forEach(l=>{s+=`<polyline fill="none" stroke="${l.color}" stroke-width="${l.width||2}" ${l.dash?'stroke-dasharray="6 4"':''} stroke-linejoin="round" points="${l.pts.filter(q=>isFinite(q[1])).map(q=>sx(q[0]).toFixed(1)+','+sy(q[1]).toFixed(1)).join(' ')}"/>`;});
+    (o.dots||[]).forEach(d=>{s+=`<circle cx="${sx(d.x)}" cy="${sy(d.y)}" r="${d.r||5}" fill="${d.color}"/>`;});
+    s+='</g></svg>';
+    if(o.legend) s+='<div class="fe-legend">'+o.legend.map(l=>`<span><i style="border-color:${l.color};${l.dash?'border-top-style:dashed;':''}"></i>${l.label}</span>`).join('')+'</div>';
+    document.getElementById(id).innerHTML=s;
+  }
+  function val(id){return +document.getElementById(id).value;}
+  function show(id){const e=document.getElementById(id),st=String(e.step||'1');const d=st.includes('.')?st.split('.')[1].length:0;const o=document.getElementById(id+'-v');if(o)o.textContent=(+e.value).toFixed(d);}
+  function bind(ids,fn){ids.forEach(id=>{document.getElementById(id).addEventListener('input',()=>{show(id);fn();});show(id);});fn();}
+  return {C,plot,val,show,bind};
+})();
+</script>
+```
+
+::: {.callout-note appearance="minimal"}
+**How to use this page.** Read it top to bottom. Each part opens with its goal and a "What's the point of me showing you this?" box. Every equation is followed by a short *where* list that defines its symbols right where they are used. The gray boxes are live (sliders and buttons). The interactive pieces work offline; the equations need an internet connection to typeset. Chapter 7 assumes the notation of Chapter 2, so Part 0 ends with a two-minute refresher. Exercise 1 from the book is left for you (Part 2.4), with a hint.
+:::
+
+# Part 0: What is this section for?
+
+::: {.goal}
+**Goal of Section 7.1.** Chapters 1 to 3 solved *steady* problems and ended at $\boldsymbol{K}\boldsymbol{d}=\boldsymbol{F}$, a list of algebraic equations for nodal temperatures. Section 7.1 lets temperature change in time. You run the **same four-step recipe** (strong form, weak form, Galerkin, matrix equations), and what comes out is a system of **ordinary differential equations (ODEs) in time**:
+
+$$
+\boldsymbol{M}\,\dot{\boldsymbol{d}}(t)+\boldsymbol{K}\,\boldsymbol{d}(t)=\boldsymbol{F}(t),\qquad \boldsymbol{d}(0)=\boldsymbol{d}_0 .
+$$
+
+*Where:* $\boldsymbol d(t)$ is the vector of unknown nodal temperatures at time $t$; the superposed dot is the time derivative, so $\dot{\boldsymbol d}=d\boldsymbol d/dt$; $\boldsymbol K$ is the same conduction ("stiffness") matrix as in Chapter 2; $\boldsymbol M$ is a new matrix that accounts for **heat storage** (I'll call it the capacity matrix); $\boldsymbol F(t)$ holds the heat loads; $\boldsymbol d_0$ holds the starting temperatures.
+
+The mesh takes care of space and time stays **continuous**, which is why Hughes calls the result *semidiscrete*. Stepping that ODE system forward in time is the job of the time-integration algorithms in later chapters, not of this section.
+:::
+
+Three things change compared with Chapter 2:
+
+| | Steady (Chapter 2) | Time-dependent (Section 7.1) |
+|---|---|---|
+| Unknown | $u(\boldsymbol x)$ | $u(\boldsymbol x,t)$ |
+| Data | $f,\ g,\ h$ depend on position | $f,\ g,\ h$ also depend on **time**, and there is an **initial temperature** $u_0(\boldsymbol x)$ |
+| Material | conductivity $\kappa_{ij}$ | $\kappa_{ij}$ **and** density $\rho$ and heat capacity $c$ |
+| Heat equation | $q_{i,i}=f$ | $\rho c\,u_{,t}+q_{i,i}=f$ |
+| Weak form | $a(w,u)=(w,f)+(w,h)_\Gamma$ | $(w,\rho c\,\dot u)+a(w,u)=(w,f)+(w,h)_\Gamma$ |
+| Matrix problem | $\boldsymbol K\boldsymbol d=\boldsymbol F$ | $\boldsymbol M\dot{\boldsymbol d}+\boldsymbol K\boldsymbol d=\boldsymbol F$ |
+
+```{mermaid}
+%%| fig-cap: "The path of Section 7.1. Time stays continuous until the very last box."
+flowchart TD
+  S["Strong form (S): heat equation, boundary conditions, initial condition"] -->|"multiply by w(x), integrate over the body"| W["Weak form (W)"]
+  W -->|"restrict u and w to the mesh space"| G["Galerkin form (G), semidiscrete"]
+  G -->|"insert u-h = sum of N_A(x) times d_A(t)"| M["Matrix problem (M): M d-dot + K d = F, with d(0) = d0"]
+  M -->|"later chapters"| T["Step through time: d at t1, t2, t3, ..."]
+```
+
+::: {.callout-tip}
+## What's the point of me showing you this?
+This section is what a **"transient thermal"** analysis does under the hood. Compared with a steady analysis, the new inputs you must supply are an **initial temperature field** ($u_0$), **time-varying** loads and boundary conditions ($f,g,h$ as functions of $t$), and the **density and specific heat** ($\rho,c$) next to the conductivity. The solver turns them into $\boldsymbol M$, $\boldsymbol K$, $\boldsymbol F(t)$ and $\boldsymbol d_0$. If you can say which piece of the strong form each input belongs to, you can answer the question an accountable analyst always has to answer: *"What problem did I actually tell the computer to solve?"*
+:::
+
+## Reading your screenshots
+
+Your ebook renders several symbols as look-alikes. Here is how I read them:
+
+| What the screenshot shows | What Hughes means | In words |
+|:---:|:---:|---|
+| slanted script "ℓ" | $f$ | **volumetric heat source** (heat generated per volume per time) |
+| script "g" and "h" | $g,\ h$ | prescribed **temperature** and prescribed **heat flow** on the boundary |
+| script 𝒱, and an empty box in (7.1.10) | $\mathcal V,\ \mathcal S$ | the spaces of **test (weighting)** functions and **trial** functions |
+| $]0,T[$ | $(0,T)$ | the **open** time interval (French-style brackets); $[0,T]$ is the closed one, endpoints included |
+| $\Omega\times]0,T[$ | | "every point of the body, at every time strictly between $0$ and $T$": a space-time block |
+| $f:\Omega\times]0,T[\to\mathbb R$ | | "$f$ takes a point and a time and returns a real number" |
+| $u_{,t}$ or $\dot u$ | $\partial u/\partial t$ | time derivative. The comma-subscript and the superposed dot mean the same thing |
+| $u(\cdot,t)$, or just $u(t)$ | | the function of $\boldsymbol x$ you get when you **freeze** the time at $t$ |
+| $H^1(\Omega)$ | | functions whose first derivatives are square-integrable ("finite energy") |
+| $\boldsymbol k_{ij}$ in (7.1.9) | $\kappa_{ij}$ | the **conductivity tensor** (a $2\times2$ or $3\times3$ array) |
+| "$A\in n-n_g$" under the sums in (7.1.17), and "$n_g$" in (7.1.18) | $A\in\eta-\eta_g$ and $A\in\eta_g$ | the **free** nodes and the **prescribed-temperature** nodes ($\eta$ is the set of all nodes) |
+
+## Two-minute refresher of Chapter 2 symbols
+
+Chapter 7 says a "detailed understanding of the material and notational conventions of Chapter 2 is required." These are the ones used below.
+
+- **Index notation.** A comma means "differentiate with respect to": $u_{,j}=\partial u/\partial x_j$. An index repeated twice in one term is **summed**: $q_{i,i}=\partial q_1/\partial x_1+\partial q_2/\partial x_2+\cdots$ is the **divergence** of the flux vector. $n_i$ is the outward unit normal on the boundary.
+- **The three "brackets."** For functions $w,u$ and data $f,h$:
+
+$$
+(w,f)=\int_\Omega w\,f\,d\Omega,\qquad
+(w,h)_\Gamma=\int_{\Gamma_h}w\,h\,d\Gamma,\qquad
+a(w,u)=\int_\Omega w_{,i}\,\kappa_{ij}\,u_{,j}\,d\Omega .
+$$
+
+  $a(\cdot,\cdot)$ is the *conduction* bracket. It is **bilinear** (linear in each slot separately) and **symmetric** ($a(w,u)=a(u,w)$ because $\kappa_{ij}=\kappa_{ji}$). In 1D it is $\int w_{,x}\,\kappa\,u_{,x}\,dx$.
+- **Mesh bookkeeping.** $\eta$ is the set of all nodes; $\eta_g\subset\eta$ is the set of nodes where the temperature is prescribed; $n_{eq}$ is the number of nodes **not** in $\eta_g$ (the number of unknowns). $N_A(\boldsymbol x)$ is the **shape function** of node $A$: it equals $1$ at node $A$, $0$ at every other node, and is a "hat" in 1D. $n_{el}$ is the number of elements, $n_{en}$ the number of nodes per element, and $a,b$ are *local* node numbers within an element.
+- **Element matrices.** $\boldsymbol B_a$ is the gradient of $N_a$ written as a column; $\boldsymbol D=[\kappa_{ij}]$ is the conductivity matrix. In 1D these are just $B_a=dN_a/dx$ and $D=\kappa$.
+- **Assembly.** The big $\mathop{\mathsf A}_{e=1}^{n_{el}}$ means "add every element matrix into its place in the global matrix," using the connectivity (which element node is which global node).
+
+# Part 1: The strong form (S)
+
+::: {.goal}
+**Goal of this part.** Know what every line of (S) says physically, and in which part of a space-time picture each line lives.
+:::
+
+## 1.1 What is given
+
+| Symbol | Meaning | Depends on | SI units |
+|---|---|---|---|
+| $f(\boldsymbol x,t)$ | heat generated inside the body | position and time | W/m³ |
+| $g(\boldsymbol x,t)$ | prescribed temperature on $\Gamma_g$ | boundary point and time | K |
+| $h(\boldsymbol x,t)$ | prescribed heat flow **into** the body through $\Gamma_h$ | boundary point and time | W/m² |
+| $u_0(\boldsymbol x)$ | temperature at time zero | position | K |
+| $\rho(\boldsymbol x)$ | density | position | kg/m³ |
+| $c(\boldsymbol x)$ | specific heat ("capacity") | position | J/(kg·K) |
+| $\kappa_{ij}(\boldsymbol x)$ | conductivity tensor | position | W/(m·K) |
+
+Notes from the text:
+
+- $\rho$ and $c$ are assumed **positive**, and they depend on position only (not on time or temperature). That is what keeps the problem **linear**. The product $\rho c$ is the **volumetric heat capacity**: joules needed to warm one cubic metre by one kelvin.
+- $\Gamma_g$ and $\Gamma_h$ **do not vary with time**: a boundary point doesn't switch from "fixed temperature" to "prescribed heat flow" in the middle of a run.
+- An **initial condition** must be specified "to render the initial/boundary-value problem well posed" (Hughes). Part 1.4 says why only one is needed.
+- Hughes calls $c$ simply the **capacity**. I treat it as the specific heat, J/(kg·K), which is what makes the units in the table work out: $\rho c\,u_{,t}$ is then W/m³.
+
+## 1.2 The equations (S)
+
+Fourier's law (7.1.9), from Chapter 2:
+
+$$
+q_i=-\kappa_{ij}\,u_{,j}\tag{7.1.9}
+$$
+
+*Where:* $q_i$ is the **heat flux vector** (heat flow per area per time, pointing from hot to cold), and $u_{,j}$ is the temperature gradient. In 1D: $q=-\kappa\,u_{,x}$.
+
+The strong form:
+
+$$
+\begin{aligned}
+\rho c\,u_{,t}+q_{i,i}&=f &&\text{on }\Omega\times]0,T[ &&\text{(heat equation)} &&(7.1.5)\\
+u&=g &&\text{on }\Gamma_g\times]0,T[ &&&&(7.1.6)\\
+-q_in_i&=h &&\text{on }\Gamma_h\times]0,T[ &&&&(7.1.7)\\
+u(\boldsymbol x,0)&=u_0(\boldsymbol x) &&\boldsymbol x\in\Omega &&&&(7.1.8)
+\end{aligned}
+$$
+
+*Where:* "find $u:\overline\Omega\times[0,T]\to\mathbb R$" (the temperature at every point of the body, including the boundary, at every time) such that all four lines hold. (7.1.7) says the heat flowing **in** through the surface, $-q_in_i$, equals $h$; $h=0$ is an insulated surface.
+
+In 1D with $\Omega=\,]0,L[$, (7.1.5) is $\rho c\,u_{,t}-(\kappa u_{,x})_{,x}=f$.
+
+::: {.callout-note collapse="true"}
+## Where (7.1.5) comes from (an energy balance, my derivation)
+Take any small region $\omega$ inside the body. Heat energy is conserved:
+
+*rate heat energy is stored* $=$ *heat generated* $-$ *heat leaving through the surface.*
+
+- Stored: $\displaystyle\int_\omega\rho c\,u_{,t}\,d\Omega$. (Heat capacity per volume times how fast the temperature rises.)
+- Generated: $\displaystyle\int_\omega f\,d\Omega$.
+- Leaving: $\displaystyle\int_{\partial\omega}q_in_i\,d\Gamma=\int_\omega q_{i,i}\,d\Omega$, by the divergence theorem (net outflow equals the integral of the divergence).
+
+So $\int_\omega\big(\rho c\,u_{,t}+q_{i,i}-f\big)\,d\Omega=0$ for **every** region $\omega$, which forces the integrand to vanish: (7.1.5). Units: each term is W/m³.
+:::
+
+## 1.3 Where each line lives: a space-time picture
+
+Draw position along the horizontal axis (for a 2D or 3D body this axis stands for the whole of $\Omega$) and time up the vertical axis. Click a button to see where that line of (S) applies.
+
+```{=html}
+<div class="fe-widget" id="st">
+<div class="fe-btns" id="st-btns">
+  <button type="button" data-r="pde" class="on">Heat equation (7.1.5)</button>
+  <button type="button" data-r="g">Temperature on Γ_g (7.1.6)</button>
+  <button type="button" data-r="h">Heat flow on Γ_h (7.1.7)</button>
+  <button type="button" data-r="ic">Initial temperature (7.1.8)</button>
+  <button type="button" data-r="top">The top edge, t = T</button>
+</div>
+<svg viewBox="0 0 560 330" width="100%" style="max-width:560px;display:block;font-size:13px" role="img" aria-label="space-time rectangle showing where each line of the strong form applies">
+  <rect class="st-r" data-r="pde" x="120" y="30" width="340" height="230" fill="#6c5ce7" fill-opacity="0.14"/>
+  <text class="st-r" data-r="pde" x="290" y="140" text-anchor="middle" fill="currentColor">ρc u,t + q_i,i = f</text>
+  <text class="st-r" data-r="pde" x="290" y="162" text-anchor="middle" fill="currentColor" opacity="0.8">inside the block, for 0 &lt; t &lt; T</text>
+  <line class="st-r" data-r="g" x1="120" y1="260" x2="120" y2="30" stroke="#d4572a" stroke-width="7"/>
+  <text class="st-r" data-r="g" x="106" y="150" text-anchor="end" fill="#d4572a">u = g</text>
+  <line class="st-r" data-r="h" x1="460" y1="260" x2="460" y2="30" stroke="#2e86c1" stroke-width="7"/>
+  <text class="st-r" data-r="h" x="474" y="150" text-anchor="start" fill="#2e86c1">−q·n = h</text>
+  <line class="st-r" data-r="ic" x1="120" y1="260" x2="460" y2="260" stroke="#1d9e75" stroke-width="7"/>
+  <text class="st-r" data-r="ic" x="290" y="282" text-anchor="middle" fill="#1d9e75">u(x,0) = u0(x)</text>
+  <line class="st-r" data-r="top" x1="120" y1="30" x2="460" y2="30" stroke="#8a8a8a" stroke-width="3" stroke-dasharray="6 4"/>
+  <text class="st-r" data-r="top" x="290" y="20" text-anchor="middle" fill="currentColor">nothing prescribed: the solution is the output</text>
+  <text x="108" y="276" text-anchor="end" fill="currentColor" opacity="0.8">t = 0</text>
+  <text x="108" y="38" text-anchor="end" fill="currentColor" opacity="0.8">t = T</text>
+  <text x="290" y="312" text-anchor="middle" fill="currentColor" opacity="0.8">position x (the body Ω, between Γ_g on the left and Γ_h on the right)</text>
+</svg>
+<div id="st-msg" class="fe-status fe-warn"></div>
+</div>
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const MSG={
+    pde:['fe-warn','<b>The heat equation</b> (7.1.5) is demanded at every interior point and every time strictly between 0 and T. Heat stored (ρc u,t) plus heat leaving (q_i,i) equals heat generated (f).'],
+    g:['fe-warn','<b>Prescribed temperature.</b> The left edge is Γ_g: at every time the temperature there is the given g(x,t). This is the <b>essential</b> condition: it is built into the function spaces. Because Γ_g does not move in time, it is a vertical edge.'],
+    h:['fe-warn','<b>Prescribed heat flow.</b> The right edge is Γ_h: at every time the heat flowing in is the given h(x,t). This is the <b>natural</b> condition: it comes out of the weak form by itself (Part 2). With h = 0 it is an insulated surface, and a surface where you prescribe nothing is automatically this one.'],
+    ic:['fe-ok','<b>Initial condition.</b> At t = 0 the whole body has the given temperature u0(x). It is the one thing you must supply at the start, because the equation is first order in time.'],
+    top:['fe-ok','<b>Nothing is prescribed at t = T.</b> Information in a heat problem moves <b>up</b> the block: the past determines the future, never the other way around. The top edge is where you read the answer.']
+  };
+  function pick(r){
+    document.querySelectorAll('#st .st-r').forEach(e=>{e.style.opacity=(e.getAttribute('data-r')===r)?'1':'0.22';});
+    document.querySelectorAll('#st-btns button').forEach(b=>b.classList.toggle('on',b.getAttribute('data-r')===r));
+    const m=MSG[r],el=$('st-msg');el.className='fe-status '+m[0];el.innerHTML=m[1];
+  }
+  document.querySelectorAll('#st-btns button').forEach(b=>b.addEventListener('click',()=>pick(b.getAttribute('data-r'))));
+  pick('pde');
+})();
+</script>
+```
+
+## 1.4 Why one initial condition, and why "parabolic"?
+
+(7.1.5) contains $u_{,t}$ but no $u_{,tt}$: it is **first order in time**, so one function of $\boldsymbol x$ (the starting temperature) is enough to start it. Equations that are second order in time (the hyperbolic problems named in this chapter's title) need two: the starting value and the starting rate. "Parabolic" means first order in time and second order in space, and the practical consequence is the picture above: the past determines the future.
+
+I'll also assume, as the weak-form argument in Part 2.3 needs, that $u_0$ is **consistent** with $g$: $u_0=g(\cdot,0)$ on $\Gamma_g$. The screenshots don't say this; it is my addition.
+
+# Part 2: The weak form (W)
+
+::: {.goal}
+**Goal of this part.** Derive (W) from (S) line by line, and see that the **only** new ingredient compared with Chapter 2 is one extra term, $(w,\rho c\,\dot u)$, which represents heat storage.
+:::
+
+::: {.callout-tip}
+## What's the point of me showing you this?
+The finite element method never touches (S). It solves (W). So (W) is the *actual* problem your program solves, and the derivation shows which boundary conditions you must impose yourself (**essential**: temperature) and which the method supplies for free (**natural**: heat flow, including "insulated").
+:::
+
+## 2.1 The two function spaces
+
+The **test space** $\mathcal V$ is "the usual space of weighting functions satisfying zero-temperature boundary conditions" (Hughes): finite-energy functions of $\boldsymbol x$ that vanish on $\Gamma_g$, and which **do not depend on time in any way**. The **trial space** *does* change with time:
+
+$$
+\mathcal S=\mathcal S_t=\Big\{u(\cdot,t)\ \Big|\ u(\boldsymbol x,t)=g(\boldsymbol x,t),\ \boldsymbol x\in\Gamma_g,\ u(\cdot,t)\in H^1(\Omega)\Big\}\tag{7.1.10}
+$$
+
+*Where:* $\mathcal S_t$ is the set of finite-energy functions of $\boldsymbol x$ that equal $g(\cdot,t)$ on $\Gamma_g$. The subscript $t$ is there only because $g$ depends on $t$ (if $g\equiv0$, then $\mathcal S_t=\mathcal V$).
+
+**Why are test functions time-independent?** We only weight in *space*: at each instant $t$ the equation must hold in a weighted-average sense for every spatial weighting function $w(\boldsymbol x)$. Time is just a parameter. A consequence you'll use later: because $w$ and $\rho c$ don't depend on $t$, they can be moved through the time derivative, $(w,\rho c\,\dot u)=\dfrac{d}{dt}(w,\rho c\,u)$.
+
+## 2.2 Deriving (W) from (S)
+
+Fix a time $t$ and any $w\in\mathcal V$. Take the heat equation (7.1.5), multiply by $w$, and integrate over the body.
+
+**Line 1: multiply and integrate.**
+
+$$
+\int_\Omega w\,\rho c\,u_{,t}\,d\Omega+\int_\Omega w\,q_{i,i}\,d\Omega=\int_\Omega w\,f\,d\Omega .
+$$
+
+**Line 2: integrate the flux term by parts.** The product rule gives $(wq_i)_{,i}=w_{,i}q_i+w\,q_{i,i}$, so $w\,q_{i,i}=(wq_i)_{,i}-w_{,i}q_i$. The divergence theorem turns the integral of the first piece into a boundary integral ($\Gamma$ is the whole boundary):
+
+$$
+\int_\Omega w\,q_{i,i}\,d\Omega=\int_\Gamma w\,q_in_i\,d\Gamma-\int_\Omega w_{,i}\,q_i\,d\Omega .
+$$
+
+**Line 3: the boundary term.** Split $\Gamma=\Gamma_g\cup\Gamma_h$. On $\Gamma_g$ we have $w=0$, so that piece contributes nothing. On $\Gamma_h$, (7.1.7) says $q_in_i=-h$. So
+
+$$
+\int_\Gamma w\,q_in_i\,d\Gamma=-\int_{\Gamma_h}w\,h\,d\Gamma=-(w,h)_\Gamma .
+$$
+
+**Line 4: Fourier's law in the volume term.** With $q_i=-\kappa_{ij}u_{,j}$,
+
+$$
+-\int_\Omega w_{,i}\,q_i\,d\Omega=+\int_\Omega w_{,i}\,\kappa_{ij}\,u_{,j}\,d\Omega=a(w,u).
+$$
+
+**Line 5: assemble.** Lines 2 to 4 say $\int_\Omega w\,q_{i,i}\,d\Omega=-(w,h)_\Gamma+a(w,u)$. Put that into Line 1 and move $-(w,h)_\Gamma$ to the right:
+
+$$
+\boxed{(w,\rho c\,\dot u)+a(w,u)=(w,f)+(w,h)_\Gamma}\tag{7.1.11}
+$$
+
+*Where:* $(w,\rho c\,\dot u)=\int_\Omega w\,\rho c\,\dot u\,d\Omega$ is the storage rate weighted by $w$; $a(w,u)$ is conduction; $(w,f)$ and $(w,h)_\Gamma$ are the heat supplied inside and through the boundary. (W) is a **heat balance, weighted by $w$.**
+
+This is why the book says the procedure is "virtually identical" to Section 2.3. Rewrite (7.1.5) as $q_{i,i}=\tilde f$ with $\tilde f=f-\rho c\,\dot u$: at a frozen instant it is *exactly* the steady equation with the source $f$ replaced by $\tilde f$, and then (7.1.11) reads $a(w,u)=(w,\tilde f)+(w,h)_\Gamma$, the Chapter 2 weak form.
+
+## 2.3 The initial condition
+
+$$
+(w,\rho c\,u(0))=(w,\rho c\,u_0)\qquad\text{for all }w\in\mathcal V\tag{7.1.12}
+$$
+
+*Where:* $u(0)$ means the function $u(\cdot,0)$ (the book's remark: $\boldsymbol x$ is suppressed in the weak form). Does (7.1.12) really say $u(0)=u_0$? Subtract the two sides: $(w,\rho c\,(u(0)-u_0))=0$ for every $w\in\mathcal V$. Since $u(0)\in\mathcal S_0$ and $u_0$ matches $g(\cdot,0)$, the difference $u(0)-u_0$ vanishes on $\Gamma_g$, so it is itself a legal test function. Choose $w=u(0)-u_0$:
+
+$$
+0=\int_\Omega\rho c\,\big(u(0)-u_0\big)^2\,d\Omega .
+$$
+
+Because $\rho c>0$ and a square is never negative, the integrand must be zero everywhere, so $u(0)=u_0$. This is the reason the book insists that $\rho$ and $c$ are positive.
+
+## 2.4 Your turn: Exercise 1 of the book
+
+*Verify the formal equivalence of (S) and (W).* Part 2.2 did (S) $\Rightarrow$ (W). The reverse, (W) $\Rightarrow$ (S), is yours. Try it first.
+
+::: {.callout-note collapse="true"}
+## Skeleton, if you get stuck
+1. Start from (7.1.11). Move everything to one side and undo the integration by parts, using $q_i=-\kappa_{ij}u_{,j}$ and $w=0$ on $\Gamma_g$. You should arrive at
+$$0=\int_\Omega w\,\alpha\,d\Omega+\int_{\Gamma_h}w\,\beta\,d\Gamma,\qquad \alpha=\rho c\,\dot u+q_{i,i}-f,\quad \beta=-q_in_i-h .$$
+2. Choose $w=\alpha\,\phi$, where $\phi>0$ inside $\Omega$ and $\phi=0$ on all of $\Gamma$. The boundary integral disappears and $0=\int\alpha^2\phi\,d\Omega$ forces $\alpha=0$: that is (7.1.5).
+3. With $\alpha=0$, choose $w=\beta\,\psi$ with $\psi>0$ on $\Gamma_h$ and $\psi=0$ on $\Gamma_g$. Then $0=\int_{\Gamma_h}\beta^2\psi\,d\Gamma$ forces $\beta=0$: that is (7.1.7).
+4. (7.1.6) holds because $u\in\mathcal S_t$, and (7.1.8) follows from (7.1.12) as in Part 2.3.
+:::
+
+# Part 3: The Galerkin form (G)
+
+::: {.goal}
+**Goal of this part.** Shrink the infinite-dimensional spaces $\mathcal S_t,\mathcal V$ to finite-dimensional mesh spaces $\mathcal S_t^h,\mathcal V^h$, keeping *time continuous*. That gives the **semidiscrete** equations (7.1.15) and (7.1.16).
+:::
+
+## 3.1 Splitting the trial function: $u^h=v^h+g^h$
+
+$\mathcal V^h\subset\mathcal V$ is "identical to before": piecewise polynomials built from the shape functions $N_A$ of the nodes **not** on $\Gamma_g$. Trial functions are built "in the usual way":
+
+$$
+u^h=v^h+g^h,\qquad u^h(\boldsymbol x,t)=v^h(\boldsymbol x,t)+g^h(\boldsymbol x,t)\tag{7.1.13, 7.1.14}
+$$
+
+*Where:* $v^h(t)\in\mathcal V^h$ (for each fixed $t$, $v^h(\cdot,t)$ is zero on $\Gamma_g$): this is the **unknown** part. $g^h(t)\in\mathcal S_t^h$ is a **known** function that carries the prescribed boundary temperature. The reason for the split is the same as in Chapter 2: $\mathcal S_t^h$ is not a vector space when $g\neq0$ (adding two members gives $2g$ on $\Gamma_g$), but $\mathcal V^h$ is. So every trial function is a known function plus a member of $\mathcal V^h$. The new feature is that all three functions now depend on $\boldsymbol x$ **and** $t$.
+
+Try it. A 3-element rod has its left end (node 1) held at a prescribed temperature $g(t)$; nodes 2, 3, 4 are free. Drag the sliders and watch $u^h$ split.
+
+```{=html}
+<div class="fe-widget" id="lf">
+<div class="fe-ctrl wide">
+<label for="lf-g">prescribed temperature g(t) at node 1</label><input type="range" id="lf-g" min="-1" max="1" step="0.05" value="0.8"><output id="lf-g-v"></output>
+<label for="lf-gd">its rate of change, dg/dt</label><input type="range" id="lf-gd" min="-5" max="5" step="0.5" value="2"><output id="lf-gd-v"></output>
+<label for="lf-d2">unknown d₂ (node 2)</label><input type="range" id="lf-d2" min="-1" max="1" step="0.05" value="0.4"><output id="lf-d2-v"></output>
+<label for="lf-d3">unknown d₃ (node 3)</label><input type="range" id="lf-d3" min="-1" max="1" step="0.05" value="0.2"><output id="lf-d3-v"></output>
+<label for="lf-d4">unknown d₄ (node 4)</label><input type="range" id="lf-d4" min="-1" max="1" step="0.05" value="0.1"><output id="lf-d4-v"></output>
+</div>
+<div id="lf-plot"></div>
+<div id="lf-out" class="fe-out"></div>
+</div>
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const X=[0,1/3,2/3,1],h=1/3,rc=1,kap=1;
+  const f3=v=>(Math.abs(v)<5e-4?0:v).toFixed(3);
+  function run(){
+    const g=FE.val('lf-g'),gd=FE.val('lf-gd'),d=[FE.val('lf-d2'),FE.val('lf-d3'),FE.val('lf-d4')];
+    const gh=[g,0,0,0],vh=[0,d[0],d[1],d[2]],uh=[g,d[0],d[1],d[2]],P=y=>X.map((x,i)=>[x,y[i]]);
+    FE.plot('lf-plot',{w:560,x:[0,1],y:[-1.2,1.2],height:290,label:'u^h split into v^h and g^h',xlabel:'position',
+      xtk:[[0,'node 1'],[1/3,'node 2'],[2/3,'node 3'],[1,'node 4']],
+      lines:[{pts:P(gh),color:FE.C.purple,dash:true,width:2.2},{pts:P(vh),color:FE.C.teal,dash:true,width:2.2},{pts:P(uh),color:FE.C.orange,width:3.2}],
+      dots:uh.map((y,i)=>({x:X[i],y,color:FE.C.orange,r:5})),
+      legend:[{label:'gʰ = g(t) N₁(x): known, carries the boundary value',color:FE.C.purple,dash:true},{label:'vʰ = d₂N₂ + d₃N₃ + d₄N₄: unknown, zero at node 1',color:FE.C.teal,dash:true},{label:'uʰ = vʰ + gʰ',color:FE.C.orange}]});
+    const M22=2*rc*h/3,M21=rc*h/6,K22=2*kap/h,K21=-kap/h,t1=-K21*g,t2=-M21*gd;
+    let s='<p style="margin:.3rem 0"><b>At the boundary node:</b> v<sup>h</sup>(0) = 0 and g<sup>h</sup>(0) = '+f3(g)+', so u<sup>h</sup>(0) = '+f3(g)+' exactly, whatever d₂, d₃, d₄ are. The prescribed temperature is satisfied by construction.</p>';
+    s+='<p style="margin:.3rem 0"><b>What it does to free node 2</b> (take ρc = κ = 1, element length h = 1/3). Row 2 of the matrix problem reads M₂₂ḋ₂ + M₂₃ḋ₃ + K₂₂d₂ + K₂₃d₃ = F₂ − K₂₁g − M₂₁ġ, where M₂₂ = 2ρch/3 = '+f3(M22)+', M₂₃ = M₂₁ = ρch/6 = '+f3(M21)+', K₂₂ = 2κ/h = '+f3(K22)+', K₂₃ = K₂₁ = −κ/h = '+f3(K21)+'.</p>';
+    s+='<table class="fe-table"><tr><th>extra source on node 2</th><th>formula</th><th>value</th></tr>'
+      +'<tr><td>conduction from the hot or cold boundary</td><td>−K₂₁ g = (κ/h) g</td><td>'+f3(t1)+'</td></tr>'
+      +'<tr><td>capacity: the boundary temperature changing in time</td><td>−M₂₁ ġ = −(ρch/6) ġ</td><td>'+f3(t2)+'</td></tr>'
+      +'<tr><th>total</th><th></th><th>'+f3(t1+t2)+'</th></tr></table>';
+    $('lf-out').innerHTML=s;
+  }
+  FE.bind(['lf-g','lf-gd','lf-d2','lf-d3','lf-d4'],run);
+})();
+</script>
+```
+
+**Things to notice:**
+
+1. The orange curve $u^h$ always starts at exactly $g$ at the left end. The teal curve $v^h$ always starts at $0$ there, which is why $v^h\in\mathcal V^h$.
+2. If $g$ is constant ($\dot g=0$) the capacity source vanishes, but the conduction source $-K_{21}g$ does not. A constant hot boundary still pumps heat into node 2.
+3. The capacity source is new in this chapter. It exists because the shape functions $N_1$ and $N_2$ overlap on element 1: node 2's heat balance "feels" how fast the boundary node is changing.
+
+## 3.2 Deriving (G)
+
+Put $w=w^h\in\mathcal V^h\subset\mathcal V$ and $u=u^h=v^h+g^h$ into (7.1.11).
+
+**Step a: linearity of the time derivative.** $\dot u^h=\dot v^h+\dot g^h$.
+
+**Step b: bilinearity.** $a(w^h,u^h)=a(w^h,v^h)+a(w^h,g^h)$, and likewise for $(w^h,\rho c\,\dot u^h)$. So
+
+$$
+(w^h,\rho c\,\dot v^h)+(w^h,\rho c\,\dot g^h)+a(w^h,v^h)+a(w^h,g^h)=(w^h,f)+(w^h,h)_\Gamma .
+$$
+
+**Step c: move the known to the right.** $g^h$ is known, so its two terms go to the right-hand side:
+
+$$
+\boxed{(w^h,\rho c\,\dot v^h)+a(w^h,v^h)=(w^h,f)+(w^h,h)_\Gamma-(w^h,\rho c\,\dot g^h)-a(w^h,g^h)}\tag{7.1.15}
+$$
+
+The initial condition (7.1.12) gets the same treatment. With $u^h(0)=v^h(0)+g^h(0)$:
+
+$$
+(w^h,\rho c\,v^h(0))=(w^h,\rho c\,u_0)-(w^h,\rho c\,g^h(0))\tag{7.1.16}
+$$
+
+(G) is: find $u^h=v^h+g^h$ with $u^h(t)\in\mathcal S_t^h$ such that (7.1.15) holds for all $w^h\in\mathcal V^h$, together with (7.1.16). As Hughes notes, "all given quantities appear on the right-hand sides." Because time is still continuous, (7.1.15) is called a **semidiscrete** equation.
+
+## 3.3 Putting in the shape functions
+
+$$
+v^h(\boldsymbol x,t)=\sum_{A\in\eta-\eta_g}N_A(\boldsymbol x)\,d_A(t)\tag{7.1.17}
+$$
+$$
+g^h(\boldsymbol x,t)=\sum_{A\in\eta_g}N_A(\boldsymbol x)\,g_A(t)\tag{7.1.18}
+$$
+
+*Where:* $\eta-\eta_g$ are the **free** nodes and $\eta_g$ the nodes with prescribed temperature; $d_A(t)$ is the unknown temperature of node $A$ as a function of time; $g_A(t)$ is the prescribed temperature at node $A$ (the given $g$ evaluated there). **The entire time-dependence sits in the nodal values** $d_A(t)$ and $g_A(t)$. The shape functions $N_A(\boldsymbol x)$ are the ones from Chapters 2 and 3 and are *not* time-dependent.
+
+Picture it: each node carries a temperature-versus-time curve, and between nodes the temperature is the straight-line interpolation of those curves.
+
+::: {.callout-note}
+## Does this only work if the true solution is "separable"?
+Hughes's remark: no. A *separable* solution has the special form $X(x)\,T(t)$ (one fixed spatial shape that just scales in time). Each single term $N_A(x)d_A(t)$ is of that form, but the **sum** is not, because every node has its own time curve, so the shape of $u^h(\cdot,t)$ changes as time passes. Even non-separable exact solutions "may be approximated arbitrarily closely" by sums like (7.1.17) and (7.1.18). The playground in Part 5 shows a sharp tent smoothing out into a sine: the profile is changing shape, not just scaling.
+:::
+
+# Part 4: The matrix problem (M)
+
+::: {.goal}
+**Goal of this part.** Turn (G) into $\boldsymbol M\dot{\boldsymbol d}+\boldsymbol K\boldsymbol d=\boldsymbol F$, with explicit formulas for $\boldsymbol M$, $\boldsymbol K$, $\boldsymbol F$ and $\boldsymbol d_0$ (equations 7.1.19 to 7.1.32).
+:::
+
+::: {.callout-tip}
+## What's the point of me showing you this?
+This is the bridge from the textbook to the code. Everything a transient thermal program does at the start is the assembly of $\boldsymbol M$, $\boldsymbol K$, $\boldsymbol F(t)$ and $\boldsymbol d_0$ from the formulas below. Knowing what each piece means lets you check them against physical intuition.
+:::
+
+## 4.1 One equation per free node
+
+(G) must hold for **every** $w^h\in\mathcal V^h$. Since $\mathcal V^h$ is spanned by the shape functions $N_B$ ($B\in\eta-\eta_g$) and (G) is linear in $w^h$, it is enough to demand it for $w^h=N_B$, one at a time. That gives one equation per free node $B$, so $n_{eq}$ equations. Insert (7.1.17) and (7.1.18) term by term.
+
+**Storage term.** The time derivative only touches $d_A(t)$:
+
+$$
+(N_B,\rho c\,\dot v^h)=\sum_{A\in\eta-\eta_g}\Big(\int_\Omega N_B\,\rho c\,N_A\,d\Omega\Big)\dot d_A=\sum_AM_{BA}\,\dot d_A,\qquad M_{BA}=\int_\Omega N_B\,\rho c\,N_A\,d\Omega .
+$$
+
+**Conduction term.**
+
+$$
+a(N_B,v^h)=\sum_{A\in\eta-\eta_g}\Big(\int_\Omega N_{B,i}\,\kappa_{ij}\,N_{A,j}\,d\Omega\Big)d_A=\sum_AK_{BA}\,d_A,\qquad K_{BA}=a(N_B,N_A).
+$$
+
+**The known $g^h$ terms** have the same structure, with $A\in\eta_g$ and $g_A$ in place of $d_A$:
+
+$$
+(N_B,\rho c\,\dot g^h)=\sum_{A\in\eta_g}M_{BA}\,\dot g_A,\qquad a(N_B,g^h)=\sum_{A\in\eta_g}K_{BA}\,g_A .
+$$
+
+Put everything into (7.1.15) with $w^h=N_B$:
+
+$$
+\sum_{A\in\eta-\eta_g}\big(M_{BA}\,\dot d_A+K_{BA}\,d_A\big)=\underbrace{(N_B,f)+(N_B,h)_\Gamma-\sum_{A\in\eta_g}\big(K_{BA}\,g_A+M_{BA}\,\dot g_A\big)}_{F_B}.
+$$
+
+The left side is row $B$ of a matrix times a vector. Stack the rows for all free nodes $B$:
+
+$$
+\boxed{\boldsymbol M\,\dot{\boldsymbol d}+\boldsymbol K\,\boldsymbol d=\boldsymbol F,\quad t\in\,]0,T[}\tag{7.1.19}
+$$
+
+**Global to element form.** $N_B$ is nonzero only on the elements touching node $B$, and each integral over $\Omega$ splits into a sum of integrals over the elements $\Omega^e$. That is what the assembly operator does:
+
+$$
+\boldsymbol M=\mathop{\mathsf A}_{e=1}^{n_{el}}(\boldsymbol m^e),\quad m^e_{ab}=\int_{\Omega^e}N_a\,\rho c\,N_b\,d\Omega\tag{7.1.21 to 7.1.23}
+$$
+$$
+\boldsymbol K=\mathop{\mathsf A}_{e=1}^{n_{el}}(\boldsymbol k^e),\quad k^e_{ab}=\int_{\Omega^e}\boldsymbol B_a^T\boldsymbol D\,\boldsymbol B_b\,d\Omega\tag{7.1.24 to 7.1.26}
+$$
+
+*Where:* $a,b=1,\dots,n_{en}$ are local node numbers; $\boldsymbol m^e$ is the element **capacity matrix** and $\boldsymbol k^e$ the element **conduction matrix** (the Chapter 2 one). Both $\boldsymbol M$ and $\boldsymbol K$ are symmetric. $\boldsymbol M$ is also positive definite: for any nonzero $\boldsymbol c$,
+
+$$
+\boldsymbol c^T\boldsymbol M\boldsymbol c=\int_\Omega\rho c\,\Big(\sum_Ac_AN_A\Big)^2d\Omega>0,
+$$
+
+because $\rho c>0$ and the $N_A$ are linearly independent. So $\boldsymbol M$ is invertible, which matters in Part 4.2 and for time-stepping later.
+
+**In words.** $\boldsymbol K$ describes how heat moves between nodes (conduction). $\boldsymbol M$ describes how much heat a node stores when its temperature changes (thermal inertia). Set $\dot{\boldsymbol d}=\boldsymbol 0$ and $\boldsymbol M$ drops out: you recover Chapter 2's $\boldsymbol K\boldsymbol d=\boldsymbol F$.
+
+## 4.2 The starting vector $\boldsymbol d_0$
+
+Do the same with the initial condition (7.1.16), using $w^h=N_B$:
+
+$$
+\sum_{A\in\eta-\eta_g}M_{BA}\,d_A(0)=\underbrace{(N_B,\rho c\,u_0)-\sum_{A\in\eta_g}M_{BA}\,g_A(0)}_{\hat d_B}.
+$$
+
+So $\boldsymbol M\boldsymbol d(0)=\hat{\boldsymbol d}$, and since $\boldsymbol M$ is invertible,
+
+$$
+\boldsymbol d_0=\boldsymbol M^{-1}\mathop{\mathsf A}_{e=1}^{n_{el}}(\hat{\boldsymbol d}^e),\qquad \hat d^e_a=\int_{\Omega^e}N_a\,\rho c\,u_0\,d\Omega-\sum_{b=1}^{n_{en}}m^e_{ab}\,g^e_b(0)\tag{7.1.30 to 7.1.32}
+$$
+
+*Where:* $g^e_b(0)$ is the prescribed temperature at element node $b$ at $t=0$ if that node is on $\Gamma_g$, and $0$ otherwise.
+
+::: {.aha}
+**This is not "copy $u_0$ to the nodes."** Setting $d_A(0)=u_0(\boldsymbol x_A)$ would be *interpolation*. Equation (7.1.16) instead says $(w^h,\rho c\,(u^h(0)-u_0))=0$ for every $w^h\in\mathcal V^h$: the starting error is **orthogonal** to the mesh space in the $\rho c$-weighted inner product. That is a **projection**: the same "drop a perpendicular" picture as best approximation in Section 4.1, with a different ruler, so $u^h(0)$ is the mesh function closest to $u_0$ in the sense $\int\rho c\,(u^h(0)-u_0)^2\,d\Omega$. For smooth $u_0$ the two choices are close. For a field with jumps they differ visibly (Part 5 shows it).
+:::
+
+## 4.3 The element matrices in 1D, by hand
+
+Take one linear element of length $h$, local coordinate $s\in[0,h]$, constant $\rho c$ and $\kappa$. The shape functions are
+
+$$
+N_1=1-\frac sh,\qquad N_2=\frac sh,\qquad B_1=\frac{dN_1}{ds}=-\frac1h,\qquad B_2=\frac{dN_2}{ds}=+\frac1h .
+$$
+
+**Capacity matrix.** Substitute $r=s/h$ (so $ds=h\,dr$):
+
+$$
+m^e_{11}=\rho c\int_0^h\Big(1-\frac sh\Big)^2ds=\rho c\,h\int_0^1(1-r)^2dr=\frac{\rho c\,h}3,\qquad
+m^e_{12}=\rho c\,h\int_0^1(1-r)\,r\,dr=\rho c\,h\Big(\frac12-\frac13\Big)=\frac{\rho c\,h}6 ,
+$$
+
+and $m^e_{22}=m^e_{11}$ by symmetry. So
+
+$$
+\boldsymbol m^e=\frac{\rho c\,h}{6}\begin{bmatrix}2&1\\1&2\end{bmatrix}.
+$$
+
+**Conduction matrix.**
+
+$$
+k^e_{11}=\int_0^h\Big(-\frac1h\Big)\kappa\Big(-\frac1h\Big)ds=\frac{\kappa}{h},\qquad k^e_{12}=\int_0^h\Big(-\frac1h\Big)\kappa\Big(\frac1h\Big)ds=-\frac\kappa h,
+\qquad
+\boldsymbol k^e=\frac\kappa h\begin{bmatrix}1&-1\\-1&1\end{bmatrix}.
+$$
+
+Notice that every row of $\boldsymbol k^e$ sums to zero (a constant temperature drives no heat) while the entries of $\boldsymbol m^e$ sum to $\rho c\,h$, the total heat capacity of the element. The widget assembles these for a uniform mesh.
+
+```{=html}
+<div class="fe-widget" id="as">
+<div class="fe-btns" id="as-btns"><span class="lab">Prescribed-temperature nodes:</span>
+  <button type="button" data-d="none">none</button>
+  <button type="button" data-d="left" class="on">left end</button>
+  <button type="button" data-d="both">both ends</button>
+</div>
+<div class="fe-ctrl wide">
+<label for="as-n">number of elements n_el (rod of length 1)</label><input type="range" id="as-n" min="2" max="6" step="1" value="4"><output id="as-n-v"></output>
+<label for="as-rc">ρc</label><input type="range" id="as-rc" min="0.5" max="4" step="0.5" value="1"><output id="as-rc-v"></output>
+<label for="as-k">κ</label><input type="range" id="as-k" min="0.5" max="4" step="0.5" value="1"><output id="as-k-v"></output>
+</div>
+<div id="as-out"></div>
+</div>
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  let dir='left';
+  const f3=v=>(+v.toFixed(3)).toString();
+  function pat(n,kind){const P=[];for(let i=0;i<=n;i++)P.push(new Array(n+1).fill(0));
+    for(let e=0;e<n;e++){if(kind==='M'){P[e][e]+=2;P[e][e+1]+=1;P[e+1][e]+=1;P[e+1][e+1]+=2;}else{P[e][e]+=1;P[e][e+1]-=1;P[e+1][e]-=1;P[e+1][e+1]+=1;}}
+    return P;}
+  function tbl(P,free){let s='<table class="fe-table mx"><tr><th></th>'+P.map((_,j)=>'<th>'+(j+1)+'</th>').join('')+'</tr>';
+    P.forEach((r,i)=>{s+='<tr><th>'+(i+1)+'</th>'+r.map((v,j)=>'<td class="'+((free[i]&&free[j])?'fre':'dim')+'">'+(v===0?'·':v)+'</td>').join('')+'</tr>';});
+    return s+'</table>';}
+  function run(){
+    const n=FE.val('as-n'),rc=FE.val('as-rc'),kap=FE.val('as-k'),h=1/n,mp=rc*h/6,kp=kap/h;
+    const free=[];for(let i=0;i<=n;i++)free.push(dir==='none'?true:dir==='left'?i>0:(i>0&&i<n));
+    const neq=free.filter(Boolean).length;
+    let s='<div class="fe-row"><div><p class="fe-cap"><b>Element matrices</b> (h = 1/'+n+')</p>'
+      +'<p style="margin:.2rem 0">m<sup>e</sup> = (ρc h/6) [[2, 1], [1, 2]] = [[ '+f3(2*mp)+', '+f3(mp)+' ], [ '+f3(mp)+', '+f3(2*mp)+' ]]</p>'
+      +'<p style="margin:.2rem 0">k<sup>e</sup> = (κ/h) [[1, −1], [−1, 1]] = [[ '+f3(kp)+', '+f3(-kp)+' ], [ '+f3(-kp)+', '+f3(kp)+' ]]</p></div></div>';
+    s+='<div class="fe-row"><div class="scroll-x"><p class="fe-cap"><b>M</b> = (ρc h/6) × pattern, with ρc h/6 = '+f3(mp)+'</p>'+tbl(pat(n,'M'),free)+'</div>'
+      +'<div class="scroll-x"><p class="fe-cap"><b>K</b> = (κ/h) × pattern, with κ/h = '+f3(kp)+'</p>'+tbl(pat(n,'K'),free)+'</div></div>';
+    s+='<p class="fe-cap">Green rows and columns are the free nodes: that block is the M and K that go into M d-dot + K d = F (n_eq = '+neq+'). Faded rows and columns belong to prescribed-temperature nodes: they are not unknowns, and their entries reappear on the right-hand side as −K<sub>BA</sub> g<sub>A</sub> − M<sub>BA</sub> g-dot<sub>A</sub>.</p>';
+    const sumM=n*rc*h,sumK=0;
+    s+='<div class="fe-status fe-ok">Check on the full (unfaded) matrices: the entries of M add up to ρc × length = '+f3(sumM)+' (total heat capacity), and every row of K adds up to '+sumK+' (a constant temperature produces no flux).</div>';
+    $('as-out').innerHTML=s;
+    document.querySelectorAll('#as-btns button').forEach(b=>b.classList.toggle('on',b.getAttribute('data-d')===dir));
+  }
+  document.querySelectorAll('#as-btns button').forEach(b=>b.addEventListener('click',()=>{dir=b.getAttribute('data-d');run();}));
+  FE.bind(['as-n','as-rc','as-k'],run);
+})();
+</script>
+```
+
+**Things to notice:**
+
+1. $\boldsymbol M$ and $\boldsymbol K$ have the same **sparsity pattern**: node $A$ is coupled to $B$ only if they share an element. $\boldsymbol M$'s off-diagonal entries are positive, $\boldsymbol K$'s are negative.
+2. Interior diagonal entries get contributions from two elements: $4\,\rho c\,h/6$ in $\boldsymbol M$ and $2\kappa/h$ in $\boldsymbol K$.
+3. Switching on prescribed-temperature nodes shrinks the system: those rows and columns leave the matrix and move to the right-hand side.
+
+::: {.callout-note collapse="true"}
+## Quadrature for $\boldsymbol m^e$ (my addition; not in your screenshots)
+For the linear bar, the mass integrand $N_a\,\rho c\,N_b$ is a **quadratic** polynomial in $s$ (a product of two linear functions), so 2-point Gauss quadrature integrates it exactly, and I checked numerically that it reproduces the matrix above. A 1-point rule (the element midpoint, where $N_1=N_2=\tfrac12$) gives $m^e_{ab}\approx\rho c\,h\cdot\tfrac12\cdot\tfrac12$, so $\boldsymbol m^e\approx\tfrac{\rho c\,h}{4}\begin{bmatrix}1&1\\1&1\end{bmatrix}$. The entries still add up to $\rho c\,h$, but the matrix has rank 1: a $+1,-1$ temperature pattern would carry **zero** heat capacity, which is unphysical.
+:::
+
+## 4.4 What is inside $\boldsymbol F(t)$
+
+$$
+\boldsymbol F(t)=\boldsymbol F_{\text{nodal}}(t)+\mathop{\mathsf A}_{e=1}^{n_{el}}\big(\boldsymbol f^e(t)\big),\qquad
+f^e_a=\int_{\Omega^e}N_a\,f\,d\Omega+\int_{\Gamma_h^e}N_a\,h\,d\Gamma-\sum_{b=1}^{n_{en}}\big(k^e_{ab}\,g^e_b+m^e_{ab}\,\dot g^e_b\big)\tag{7.1.27 to 7.1.29}
+$$
+
+| Piece | Comes from | Meaning |
+|---|---|---|
+| $\boldsymbol F_{\text{nodal}}(t)$ | defined in the earlier chapters (not on your pages) | heat applied directly at nodes (point sources), now allowed to vary in time (my reading; check Chapter 2 or 3) |
+| $\int_{\Omega^e}N_a f\,d\Omega$ | $(N_B,f)$ | distributed heat source, handed to the nodes through the shape functions |
+| $\int_{\Gamma_h^e}N_a h\,d\Gamma$ | $(N_B,h)_\Gamma$ | heat entering through the flux boundary |
+| $-\sum_b k^e_{ab}g^e_b$ | $-a(N_B,g^h)$ | conduction from prescribed-temperature nodes into free nodes |
+| $-\sum_b m^e_{ab}\dot g^e_b$ | $-(N_B,\rho c\,\dot g^h)$ | capacity effect of the prescribed temperatures **changing in time**; zero when $g$ is constant in time |
+
+This matches what Part 3.2 derived: (7.1.29) in your screenshot has the same two terms $(k^e_{ab}g^e_b+m^e_{ab}\dot g^e_b)$.
+
+# Part 5: Solve it: a playground
+
+::: {.goal}
+**Goal of this part.** See what $\boldsymbol M\dot{\boldsymbol d}+\boldsymbol K\boldsymbol d=\boldsymbol F$ actually produces, and see the two modeling choices from this section at work: the **mesh** and the **starting vector** $\boldsymbol d_0$.
+:::
+
+::: {.callout-tip}
+## What's the point of me showing you this?
+$\boldsymbol M\dot{\boldsymbol d}+\boldsymbol K\boldsymbol d=\boldsymbol F$ is a plain ODE system, so it needs some time integrator. Rather than introduce one now, this widget uses a trick that is **exact** for this particular problem, so *all* the error you see comes from the mesh and from $\boldsymbol d_0$, none from time-stepping.
+:::
+
+**The problem.** A rod $\Omega=\,]0,1[$ with $\rho c=\kappa=1$, both ends held at $u=0$, no source. The exact solution is the sine series $u=\sum_kb_k\,e^{-k^2\pi^2t}\sin k\pi x$, where $b_k=2\int_0^1u_0\sin(k\pi x)\,dx$. Each sine decays at its own rate $k^2\pi^2$, so the sharper the starting profile, the faster it smooths.
+
+**The trick.** On a uniform mesh with $g=0$ and $f=0$, the generalized eigenvectors of $\boldsymbol K\boldsymbol\phi=\lambda\boldsymbol M\boldsymbol\phi$ are discrete sines, $\phi_j(A)=\sin(j\pi x_A)$, with $\lambda_j=\dfrac{6\,(1-\cos j\pi h)}{h^2\,(2+\cos j\pi h)}$ (you can verify this by multiplying the tridiagonal $\boldsymbol K$ and $\boldsymbol M$ from Part 4.3 into $\phi_j$). They are $\boldsymbol M$-orthogonal, and each one decays as $e^{-\lambda_jt}$. So $\boldsymbol d(t)=\sum_jc_j\,e^{-\lambda_jt}\boldsymbol\phi_j$ solves the ODE system exactly.
+
+```{=html}
+<div class="fe-widget" id="pg">
+<div class="fe-btns" id="pg-ic"><span class="lab">Initial temperature u₀:</span>
+  <button type="button" data-i="sin">sin(πx) (smooth)</button>
+  <button type="button" data-i="tent" class="on">tent</button>
+  <button type="button" data-i="box">box (jumps)</button>
+</div>
+<div class="fe-btns" id="pg-pr"><span class="lab">Starting vector d₀:</span>
+  <button type="button" data-p="1" class="on">Galerkin: d₀ = M⁻¹ d̂ (7.1.30)</button>
+  <button type="button" data-p="0">copy nodal values u₀(xₐ)</button>
+</div>
+<div class="fe-ctrl wide">
+<label for="pg-n">number of elements</label><input type="range" id="pg-n" min="2" max="24" step="1" value="6"><output id="pg-n-v"></output>
+<label for="pg-t">time t</label><input type="range" id="pg-t" min="0" max="0.2" step="0.001" value="0"><output id="pg-t-v"></output>
+</div>
+<div class="fe-row">
+  <div><p class="fe-cap"><b>Temperature along the rod</b> at time t</p><div id="pg-prof"></div></div>
+  <div><p class="fe-cap"><b>Temperature at the middle, x = ½</b>, versus time</p><div id="pg-hist"></div></div>
+</div>
+<div id="pg-out" class="fe-out"></div>
+</div>
+<script>
+(function(){
+  const $=id=>document.getElementById(id),KMAX=120,PI=Math.PI,TMAX=0.2;
+  const IC={sin:x=>Math.sin(PI*x),tent:x=>1-Math.abs(2*x-1),box:x=>(x>0.25&&x<0.75)?1:0};
+  let ic='tent',pr=1;
+  const cc={};
+  function coefs(k){if(!cc[k]){const f=IC[k],Q=4000,b=[];for(let j=1;j<=KMAX;j++){let s=0;for(let i=0;i<Q;i++){const x=(i+0.5)/Q;s+=f(x)*Math.sin(j*PI*x);}b.push(2*s/Q);}cc[k]=b;}return cc[k];}
+  function exact(k,x,t){if(t<5e-4)return IC[k](x);const b=coefs(k);let s=0;for(let j=1;j<=KMAX;j++){const e=Math.exp(-j*j*PI*PI*t);if(e<1e-14)break;s+=b[j-1]*e*Math.sin(j*PI*x);}return s;}
+  const fc={};
+  function model(n,k,p){
+    const key=n+k+p;if(fc[key])return fc[key];
+    const h=1/n,m=n-1,f=IC[k],xa=[];for(let A=1;A<n;A++)xa.push(A*h);
+    const Mv=v=>v.map((_,i)=>h/6*((i>0?v[i-1]:0)+4*v[i]+(i<m-1?v[i+1]:0)));
+    let rhs;
+    if(p){rhs=[];for(let B=1;B<n;B++){let s=0;const Q=600;
+      for(let e=B-1;e<=B;e++){const a=e*h;for(let q=0;q<Q;q++){const x=a+(q+0.5)*h/Q,NB=(e===B-1)?(x-a)/h:((B+1)*h-x)/h;s+=NB*f(x);}}
+      rhs.push(s*h/Q);}}
+    else rhs=Mv(xa.map(f));
+    const lam=[],c=[],phis=[];
+    for(let j=1;j<=m;j++){const ph=xa.map(x=>Math.sin(j*PI*x)),Mp=Mv(ph);
+      let num=0,den=0;for(let i=0;i<m;i++){num+=ph[i]*rhs[i];den+=ph[i]*Mp[i];}
+      c.push(num/den);lam.push(6*(1-Math.cos(j*PI*h))/(h*h*(2+Math.cos(j*PI*h))));phis.push(ph);}
+    return fc[key]={n,h,m,c,lam,phis};
+  }
+  function nodal(md,t){const d=new Array(md.m).fill(0);for(let j=0;j<md.m;j++){const a=md.c[j]*Math.exp(-md.lam[j]*t);for(let i=0;i<md.m;i++)d[i]+=a*md.phis[j][i];}return [0].concat(d,[0]);}
+  function interp(md,d,x){const q=Math.min(md.n-1,Math.max(0,Math.floor(x/md.h+1e-12))),s=x/md.h-q;return d[q]*(1-s)+d[q+1]*s;}
+  function run(){
+    const n=FE.val('pg-n'),t=FE.val('pg-t'),md=model(n,ic,pr),d=nodal(md,t);
+    const ex=[],fe=[];for(let i=0;i<=200;i++){const x=i/200;ex.push([x,exact(ic,x,t)]);}
+    for(let A=0;A<=n;A++)fe.push([A*md.h,d[A]]);
+    FE.plot('pg-prof',{w:460,x:[0,1],y:[-0.3,1.3],height:290,label:'temperature profile',xlabel:'x',
+      lines:[{pts:ex,color:FE.C.gray,dash:true,width:2},{pts:fe,color:FE.C.orange,width:2.6}],
+      dots:fe.map(q=>({x:q[0],y:q[1],color:FE.C.orange,r:4})),
+      legend:[{label:'exact',color:FE.C.gray,dash:true},{label:'finite element uʰ(x,t)',color:FE.C.orange}]});
+    const hx=[],hf=[];for(let i=0;i<=80;i++){const tt=TMAX*i/80;hx.push([tt,exact(ic,0.5,tt)]);hf.push([tt,interp(md,nodal(md,tt),0.5)]);}
+    FE.plot('pg-hist',{w:460,x:[0,TMAX],y:[-0.3,1.3],height:290,label:'temperature history at the middle',xlabel:'time t',
+      lines:[{pts:hx,color:FE.C.gray,dash:true,width:2},{pts:hf,color:FE.C.orange,width:2.6}],
+      dots:[{x:t,y:interp(md,d,0.5),color:FE.C.orange,r:6},{x:t,y:exact(ic,0.5,t),color:FE.C.gray,r:4}]});
+    let e2=0,n2=0;const NS=400;for(let i=0;i<NS;i++){const x=(i+0.5)/NS,a=interp(md,d,x),b=exact(ic,x,t);e2+=(a-b)**2;n2+=b*b;}
+    const rel=n2>1e-12?100*Math.sqrt(e2/n2):0,mn=Math.min(...d),mx=Math.max(...d);
+    let s='Relative L² error of the temperature profile at t = '+t.toFixed(3)+': <b>'+rel.toFixed(2)+'%</b> &nbsp;|&nbsp; FE temperature range: <b>'+mn.toFixed(3)+'</b> to <b>'+mx.toFixed(3)+'</b>';
+    if(mn<-0.02||mx>1.02)s+='<div class="fe-status fe-bad"><b>Outside the physical range.</b> The exact solution of the heat equation never leaves the range of the initial data (here 0 to 1: heat flows from hot to cold), but this FE field does. '
+      +(pr?'Here the cause is the Galerkin starting vector (7.1.30): projecting data with jumps onto the mesh overshoots at the jumps, and refining the mesh does <b>not</b> remove it.':'Copying the nodal values avoids an overshoot at t = 0, but a smaller one appears almost immediately, because the coupled (consistent) M does not preserve the maximum principle.')+'</div>';
+    const rows=[];for(let j=1;j<=Math.min(3,md.m);j++)rows.push([j,(j*j*PI*PI).toFixed(3),md.lam[j-1].toFixed(3),(100*(md.lam[j-1]/(j*j*PI*PI)-1)).toFixed(1)+'%']);
+    s+='<p class="fe-cap" style="margin-top:.7rem"><b>Decay rates</b> of the first modes: each sine mode decays like e<sup>−λt</sup>.</p><table class="fe-table"><tr><th>mode j</th><th>exact λ = j²π²</th><th>finite element λ<sub>j</sub></th><th>FE is higher by</th></tr>'
+      +rows.map(r=>'<tr><th>'+r[0]+'</th><td>'+r[1]+'</td><td>'+r[2]+'</td><td>'+r[3]+'</td></tr>').join('')+'</table>';
+    $('pg-out').innerHTML=s;
+  }
+  document.querySelectorAll('#pg-ic button').forEach(b=>b.addEventListener('click',()=>{ic=b.getAttribute('data-i');document.querySelectorAll('#pg-ic button').forEach(c=>c.classList.toggle('on',c===b));run();}));
+  document.querySelectorAll('#pg-pr button').forEach(b=>b.addEventListener('click',()=>{pr=+b.getAttribute('data-p');document.querySelectorAll('#pg-pr button').forEach(c=>c.classList.toggle('on',c===b));run();}));
+  FE.bind(['pg-n','pg-t'],run);
+})();
+</script>
+```
+
+**Things to notice:**
+
+1. **Smooth start (sine).** With "copy nodal values," the starting vector is exactly the lowest discrete mode, so the FE solution is a single exponential. Switch to the Galerkin projection and the nodal values start slightly *higher* than $\sin\pi x$ (for 2 elements the factor is $\lambda_1/\pi^2\approx1.22$): the projection of a concave function onto linear pieces lifts it a little to reduce the mean-square error.
+2. **The tent and the box smooth out in time.** Drag the time slider: the sharp features vanish quickly (high modes decay like $e^{-k^2\pi^2t}$), and what remains looks like $\sin\pi x$. The profile changes *shape*, not just size: that is the non-separable behavior from Part 3.3.
+3. **Box with Galerkin starting values.** With 8 elements the nodal values dip to about $-0.12$ and rise to about $1.14$. The exact heat equation never does that (heat flows from hot to cold, and the solution can't leave the range of the initial data). The cause is the projection (7.1.30), through the coupled $\boldsymbol M$. Refining the mesh does **not** cure it: at 12, 24 and 48 elements the overshoot stays at about $-0.13$ and $1.13$, concentrated at the jumps. Copying nodal values has no overshoot at $t=0$, but a smaller one (about $\pm0.02$ to $0.04$) appears in the first instants, because the semidiscrete system with the coupled $\boldsymbol M$ does not obey a maximum principle. Treat sharp starting or boundary data in a transient model with suspicion.
+4. **The decay-rate table.** The FE rates $\lambda_j$ are always *higher* than the exact $j^2\pi^2$, and the gap grows for higher modes (for the highest mode on a mesh the rate is roughly $12/h^2$ against the exact $\pi^2/h^2\approx9.9/h^2$). So the semidiscrete FE solution cools very slightly **too fast**, and the mesh can't resolve fine detail at all.
+
+# Part 6: What this means for models you will evaluate
+
+**Goal of this part.** Turn the section into a checklist, and collect three checks that come straight from the weak form.
+
+| Question to ask of a transient thermal model | What Section 7.1 says | How to check |
+|---|---|---|
+| What exactly is the initial temperature? | Galerkin sets $\boldsymbol d_0=\boldsymbol M^{-1}\hat{\boldsymbol d}$, a projection (7.1.30). Many codes just copy nodal values instead. | Plot the field at $t=0$. For smooth $u_0$ both agree closely; for jumps the projection overshoots noticeably, and even copied values overshoot a little right after $t=0$ (Part 5). Know which one your code does. |
+| Is $u_0$ consistent with the boundary condition at $t=0$? | Part 2.3 needed $u_0=g(\cdot,0)$ on $\Gamma_g$ (my addition). | If it isn't, expect an instant "thermal shock" at the boundary: large gradients and oscillations in the first steps. |
+| Which material data are needed? | $\rho c>0$ everywhere (Part 2.3) in addition to $\kappa_{ij}$. | Zero density or specific heat makes $\boldsymbol M$ singular there: the equations turn algebraic. Check units too. |
+| Do the boundary data vary in time? | They add $-(\boldsymbol K\boldsymbol g+\boldsymbol M\dot{\boldsymbol g})$ to $\boldsymbol F$ (Part 4.4). | A sudden jump in $g(t)$ means a huge $\dot g$ for an instant: expect oscillations. Ramp the change. |
+| Does the late-time answer match steady state? | With $f,g,h$ constant in time, $\dot{\boldsymbol d}\to\boldsymbol 0$ and $\boldsymbol M$ drops out, leaving $\boldsymbol K\boldsymbol d=\boldsymbol F$. | Run long enough and compare with a steady analysis. A mismatch means the loads or boundary conditions are not what you think. |
+
+## Three checks you get for free
+
+Suppose no temperature is prescribed ($\Gamma_g=\emptyset$, everything insulated or flux-driven). Then $w^h=1$ is a legal test function: it equals $\sum_AN_A$, the sum of all shape functions. Three facts follow.
+
+**(a) Total heat capacity.** $\displaystyle\mathbf 1^T\boldsymbol M\,\mathbf 1=\sum_{A,B}\int_\Omega N_A\rho cN_B\,d\Omega=\int_\Omega\rho c\,\Big(\sum_AN_A\Big)\Big(\sum_BN_B\Big)d\Omega=\int_\Omega\rho c\,d\Omega$. The sum of *all* entries of $\boldsymbol M$ is $\rho c$ times the volume of the body.
+
+**(b) A constant temperature has no flux.** $(\boldsymbol K\mathbf 1)_B=a\big(N_B,\textstyle\sum_AN_A\big)=a(N_B,1)=\int N_{B,i}\kappa_{ij}\cdot0\,d\Omega=0$. Every row of $\boldsymbol K$ sums to zero.
+
+**(c) Global heat conservation.** Multiply $\boldsymbol M\dot{\boldsymbol d}+\boldsymbol K\boldsymbol d=\boldsymbol F$ on the left by $\mathbf 1^T$. By (b) and the symmetry of $\boldsymbol K$ the conduction term vanishes. $\mathbf 1^T\boldsymbol M\boldsymbol d=\int\rho c\,u^h\,d\Omega$ is the total stored heat, and $\mathbf 1^T\boldsymbol F=\int f\,d\Omega+\int_{\Gamma_h}h\,d\Gamma$ (plus any point sources) because $\sum_BN_B=1$. So
+
+$$
+\frac{d}{dt}\int_\Omega\rho c\,u^h\,d\Omega=\int_\Omega f\,d\Omega+\int_{\Gamma_h}h\,d\Gamma .
+$$
+
+The rate of change of the total stored heat equals the total heat supplied. The FE model conserves heat globally, **exactly**, at every mesh size. (I checked this numerically on a 6-element rod with a source and flux at both ends: both sides came out to $2.000$.) This is for the semidiscrete equations; whether a time-stepping algorithm preserves it is a question for the next chapters.
+
+::: {.aha}
+**Use (a) to debug units and material assignment.** Sum the entries of the assembled $\boldsymbol M$ in your own code and compare with $\int\rho c\,d\Omega$ computed by hand. If they disagree, a density, specific heat, or volume is wrong.
+:::
+
+# Check yourself
+
+1. Why is it legitimate for the test functions to be independent of time, and what does that let you do with $(w,\rho c\,\dot u)$?
+
+::: {.callout-note collapse="true"}
+## Answer
+We only ask the heat balance to hold in a weighted-average sense **in space** at each instant, so time is just a parameter. Since $w$ and $\rho c$ don't depend on $t$, they pass through the time derivative: $(w,\rho c\,\dot u)=\frac{d}{dt}(w,\rho c\,u)$. It's also why $\boldsymbol M$ and $\boldsymbol K$ are constant matrices when the material properties are constant in time.
+:::
+
+2. Where do the terms $-\boldsymbol K\boldsymbol g-\boldsymbol M\dot{\boldsymbol g}$ in $\boldsymbol F$ come from, and when does each vanish?
+
+::: {.callout-note collapse="true"}
+## Answer
+They are the known part $g^h$ moved to the right-hand side in (7.1.15): $-a(w^h,g^h)$ gives the conduction term $-\boldsymbol K\boldsymbol g$, and $-(w^h,\rho c\,\dot g^h)$ gives the capacity term $-\boldsymbol M\dot{\boldsymbol g}$. The second vanishes if $g$ doesn't change in time. The first vanishes only if the prescribed temperatures are zero (a constant, nonzero $g$ still drives conduction into the neighboring free nodes).
+:::
+
+3. For $\rho c=2$, $\kappa=3$ and $h=0.5$, write the 1D element matrices $\boldsymbol m^e$ and $\boldsymbol k^e$.
+
+::: {.callout-note collapse="true"}
+## Answer
+$\boldsymbol m^e=\dfrac{2\cdot0.5}{6}\begin{bmatrix}2&1\\1&2\end{bmatrix}=\begin{bmatrix}1/3&1/6\\1/6&1/3\end{bmatrix}$ and $\boldsymbol k^e=\dfrac{3}{0.5}\begin{bmatrix}1&-1\\-1&1\end{bmatrix}=\begin{bmatrix}6&-6\\-6&6\end{bmatrix}$. Check: the entries of $\boldsymbol m^e$ add to $1=\rho c\,h$, and the rows of $\boldsymbol k^e$ add to $0$.
+:::
+
+4. A rod is insulated at both ends ($h=0$, nothing prescribed) with no source. What do the nodal temperatures approach as $t\to\infty$?
+
+::: {.callout-note collapse="true"}
+## Answer
+$\dot{\boldsymbol d}\to\boldsymbol 0$, so $\boldsymbol K\boldsymbol d=\boldsymbol 0$, and with no supports the only solutions are constant vectors. By (c) in Part 6 the total heat $\mathbf 1^T\boldsymbol M\boldsymbol d$ never changes, so the constant is $d_\infty=\dfrac{\mathbf 1^T\boldsymbol M\boldsymbol d_0}{\mathbf 1^T\boldsymbol M\mathbf 1}$: the $\rho c$-weighted average of the starting temperature.
+:::
+
+5. What does $\boldsymbol d_0=\boldsymbol M^{-1}\hat{\boldsymbol d}$ minimize?
+
+::: {.callout-note collapse="true"}
+## Answer
+It makes $u^h(0)-u_0$ orthogonal to $\mathcal V^h$ in the $\rho c$-weighted inner product, which is the same as minimizing $\int_\Omega\rho c\,\big(u^h(0)-u_0\big)^2d\Omega$ over the mesh functions with the right boundary values. It is a projection, not interpolation.
+:::
+
+6. Suppose $\rho c=0$ in part of the body. What goes wrong?
+
+::: {.callout-note collapse="true"}
+## Answer
+Positive definiteness of $\boldsymbol M$ is lost (Part 4.1), so $\boldsymbol M$ can be singular and $\boldsymbol d_0=\boldsymbol M^{-1}\hat{\boldsymbol d}$ doesn't exist. Physically there is no heat storage there, so those equations become steady (algebraic) while the rest stays differential. Also, the argument of Part 2.3 that (7.1.12) implies $u(0)=u_0$ fails.
+:::
+
+# Notes on sources and limits
+
+::: {.callout-note collapse="true"}
+## What is Hughes and what is mine
+- **From Hughes's text (your screenshots):** the data and material assumptions, (S) with (7.1.5) to (7.1.9), the spaces and (7.1.10), (W) with (7.1.11) and (7.1.12), the remark and Exercise 1, (G) with (7.1.13) to (7.1.16), the expansions (7.1.17) and (7.1.18), the separability remark, and the matrix problem (M) with (7.1.19) to (7.1.32).
+- **My derivations and additions (checkable, not in the book):** the energy-balance derivation of (7.1.5); the line-by-line (S) $\Rightarrow$ (W) integration by parts; the argument that (7.1.12) implies $u(0)=u_0$; the compatibility assumption $u_0=g(\cdot,0)$; the row-by-row derivation of $\boldsymbol M\dot{\boldsymbol d}+\boldsymbol K\boldsymbol d=\boldsymbol F$ and the positive-definiteness of $\boldsymbol M$; the projection interpretation of (7.1.30); the hand-computed 1D element matrices; the modal solution in Part 5 (I checked it numerically against a matrix exponential); the three checks in Part 6; the quadrature remark for $\boldsymbol m^e$.
+- **Not on your pages:** the definition of $\boldsymbol F_{\text{nodal}}$, which comes from earlier chapters, and anything after the boxed matrix problem (M). If the book words something differently, trust the book.
+- **Time stepping:** this section stops at the ODE system. The algorithms that march it forward are later chapters.
+:::
